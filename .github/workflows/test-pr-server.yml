@@ -1,6 +1,12 @@
 name: Test PR (server)
 
 on:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/test-pr-server.yml"
+      - "server/**"
   pull_request:
     branches:
       - "**"
@@ -24,6 +30,9 @@ jobs:
       - uses: actions/setup-go@v7.0.0
         with:
           go-version-file: "server/go.mod"
+
+      - name: go vet all packages
+        run: go vet ./...
 
       - name: go test all packages
         run: go test ./...

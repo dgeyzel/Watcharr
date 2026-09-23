@@ -27,6 +27,18 @@ const config = {
 		alias: {
 			"@": "src",
 		},
+
+		typescript: {
+			// Include the test tooling so it is type checked and linted too.
+			config: (tsconfig) => {
+				tsconfig.include.push(
+					"../e2e/**/*.ts",
+					"../playwright.config.ts",
+					"../vitest.config.ts",
+				);
+				return tsconfig;
+			},
+		},
 	},
 };
 

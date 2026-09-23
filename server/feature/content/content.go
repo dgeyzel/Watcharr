@@ -147,7 +147,7 @@ func (s *Service) saveContent(c *entity.Content, onlyUpdate bool) error {
 	if res.RowsAffected > 0 {
 		slog.Debug("saveContent: Downloading poster.")
 		err := download(
-			"https://image.tmdb.org/t/p/w500"+c.PosterPath,
+			s.tmdb.ImageBaseURL+"/w500"+c.PosterPath,
 			path.Join(config.DataPath, "img", c.PosterPath),
 			false,
 		)

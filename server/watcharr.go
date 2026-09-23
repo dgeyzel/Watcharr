@@ -7,50 +7,18 @@ import (
 	"fmt"
 	"log"
 	"log/slog"
-	"net/http"
-	"net/http/httputil"
 	"os"
 	"os/exec"
 	"path"
-	"time"
 
 	_ "embed"
 
-	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
-	"github.com/gin-gonic/gin/binding"
-	"github.com/go-playground/validator/v10"
 	"github.com/joho/godotenv"
+	"github.com/sbondCo/Watcharr/app"
 	"github.com/sbondCo/Watcharr/config"
 	"github.com/sbondCo/Watcharr/database"
-	"github.com/sbondCo/Watcharr/database/entity"
-	"github.com/sbondCo/Watcharr/domain"
-	"github.com/sbondCo/Watcharr/feature/activity"
-	"github.com/sbondCo/Watcharr/feature/arr"
-	"github.com/sbondCo/Watcharr/feature/auth"
-	"github.com/sbondCo/Watcharr/feature/content"
-	"github.com/sbondCo/Watcharr/feature/discover"
-	"github.com/sbondCo/Watcharr/feature/feature"
-	"github.com/sbondCo/Watcharr/feature/follow"
-	"github.com/sbondCo/Watcharr/feature/game"
-	"github.com/sbondCo/Watcharr/feature/img"
-	"github.com/sbondCo/Watcharr/feature/imprt"
-	"github.com/sbondCo/Watcharr/feature/jellyfin"
-	"github.com/sbondCo/Watcharr/feature/job"
-	"github.com/sbondCo/Watcharr/feature/plex"
-	"github.com/sbondCo/Watcharr/feature/profile"
-	"github.com/sbondCo/Watcharr/feature/search"
-	"github.com/sbondCo/Watcharr/feature/server"
-	"github.com/sbondCo/Watcharr/feature/setup"
-	"github.com/sbondCo/Watcharr/feature/tag"
-	"github.com/sbondCo/Watcharr/feature/task"
-	"github.com/sbondCo/Watcharr/feature/user"
-	"github.com/sbondCo/Watcharr/feature/watched"
-	"github.com/sbondCo/Watcharr/feature/watched/episode"
-	"github.com/sbondCo/Watcharr/feature/watched/season"
 	"github.com/sbondCo/Watcharr/logging"
-	"github.com/sbondCo/Watcharr/media/tmdb"
-	"github.com/sbondCo/Watcharr/router"
 	taskl "github.com/sbondCo/Watcharr/task"
 )
 
@@ -148,146 +116,18 @@ func main() {
 		os.Exit(1)
 	}
 
+	opts := app.Options{}
 	if isProd {
-		go runUI()
+		// WATCHARR_SKIP_UI lets the UI server be run separately (used by
+		// e2e tests), we still proxy to it.
+		if os.Getenv("WATCHARR_SKIP_UI") == "" {
+			go runUI()
+		}
 		gin.SetMode(gin.ReleaseMode)
+		opts.UIProxyHost = "127.0.0.1:3000"
 	}
 	gin.DefaultWriter = multiw
-	gine := gin.Default()
-
-	// Register our custom validators
-	if v, ok := binding.Validator.Engine().(*validator.Validate); ok {
-		v.RegisterValidation("validsearchtype", domain.ValidSearchType)
-		v.RegisterValidation("validdiscoverfilter", domain.ValidDiscoverFilter)
-	}
-
-	gine.Use(cors.New(cors.Config{
-		AllowOrigins: []string{"*"},
-		AllowMethods: []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
-		AllowHeaders: []string{
-			"Content-Type",
-			"Content-Length",
-			"Accept-Encoding",
-			"X-CSRF-Token",
-			"Authorization",
-			"accept",
-			"origin",
-			"Cache-Control",
-			"X-Requested-With",
-		},
-		ExposeHeaders: []string{
-			"Content-Length",
-			"watcharr-lastviewedseason-saved",
-		},
-		AllowCredentials: true,
-		MaxAge:           12 * time.Hour,
-	}))
-	if isProd {
-		// Proxy NoRoute requests to UI server
-		gine.NoRoute(func(c *gin.Context) {
-			director := func(req *http.Request) {
-				req.URL.Scheme = "http"
-				req.URL.Host = "127.0.0.1:3000"
-			}
-			proxy := &httputil.ReverseProxy{Director: director}
-			proxy.ServeHTTP(c.Writer, c.Request)
-		})
-	}
-	api := gine.Group("/api")
-	br := router.NewBaseRouter(db, api, cfg)
-
-	tmdbService := tmdb.NewTMDB(cfg.TMDB_KEY)
-
-	contentService := content.NewService(db, tmdbService)
-	tmdbService.AddContentProvider(contentService)
-	plexService := plex.NewService(cfg)
-	authService := auth.NewService(db, cfg, plexService)
-	authTrustedHeaderService := auth.NewTrustedHeaderService(db, cfg, authService)
-	activityService := activity.NewService(db)
-	userService := user.NewService(db)
-	userManageService := user.NewManageService(db)
-	gameService := game.NewService(db, &br.Cfg.TWITCH, activityService)
-	watchedService := watched.NewService(
-		db,
-		contentService,
-		gameService,
-		activityService,
-		userService)
-	watchedSeasonService := season.NewService(db, activityService)
-	watchedEpisodeService := episode.NewService(
-		db,
-		watchedService,
-		watchedSeasonService,
-		tmdbService,
-		activityService,
-		userService)
-	jellyfinService := jellyfin.NewService(cfg)
-	jellyfinSyncService := jellyfin.NewSyncService(
-		cfg,
-		jellyfinService,
-		watchedService,
-		watchedSeasonService,
-		watchedEpisodeService,
-		activityService)
-	plexSyncService := plex.NewSyncService(
-		plexService,
-		watchedService,
-		watchedSeasonService,
-		watchedEpisodeService,
-		activityService)
-	featureService := feature.NewService(cfg)
-	profileService := profile.NewService(db)
-	followService := follow.NewService(db)
-	tagService := tag.NewService(db, watchedService)
-	searchService := search.NewService(db, br.Cfg, tmdbService, watchedService)
-	discoverService := discover.NewService(db, br.Cfg, tmdbService)
-	importService := imprt.NewService(
-		db,
-		watchedService,
-		watchedSeasonService,
-		watchedEpisodeService,
-		tmdbService,
-		activityService,
-		tagService,
-		searchService)
-	importTraktService := imprt.NewTraktService(importService)
-
-	auth.NewRouter(br, authService, authTrustedHeaderService).AddRoutes()
-	content.NewRouter(br, contentService, watchedService, tmdbService).AddRoutes()
-	watched.NewRouter(br, watchedService).AddRoutes()
-	season.NewRouter(br, watchedSeasonService).AddRoutes()
-	episode.NewRouter(br, watchedEpisodeService).AddRoutes()
-	activity.NewRouter(br, activityService).AddRoutes()
-	profile.NewRouter(br, profileService).AddRoutes()
-	jellyfin.NewRouter(br, jellyfinService, jellyfinSyncService).AddRoutes()
-	plex.NewRouter(br, plexSyncService).AddRoutes()
-	user.NewRouter(br, userService, userManageService).AddRoutes()
-	follow.NewRouter(br, followService).AddRoutes()
-	imprt.NewRouter(br, importService, importTraktService).AddRoutes()
-	server.NewRouter(br, plexService, authTrustedHeaderService, userManageService).AddRoutes()
-	feature.NewRouter(br, featureService).AddRoutes()
-	arr.NewRouter(br, contentService).AddRoutes()
-	job.NewRouter(br).AddRoutes()
-	task.NewRouter(br).AddRoutes()
-	tag.NewRouter(br, tagService).AddRoutes()
-	game.NewRouter(br, gameService, watchedService).AddRoutes()
-	search.NewRouter(br, searchService, watchedService).AddRoutes()
-	discover.NewRouter(br, discoverService, watchedService).AddRoutes()
-	img.NewRouter(br).AddRoutes()
-
-	// Only add setup routes if there are no users found in db.
-	var userCount int64
-	if uresp := db.Model(&entity.User{}).Count(&userCount); uresp.Error == nil {
-		if userCount != 0 {
-			slog.Debug("registered users found.. skipped creating setup routes.")
-		} else {
-			slog.Info("No users found.. creating setup routes.")
-			setup.NewRouter(br, authService).AddRoutes()
-		}
-	} else {
-		slog.Error("Failed to check if any users exist.. not registering setup routes",
-			"error", uresp.Error)
-	}
+	gine := app.NewEngine(db, cfg, opts)
 
 	go taskl.SetupTasks(cfg, db)
 

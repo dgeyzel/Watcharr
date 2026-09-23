@@ -1,6 +1,19 @@
 name: Test PR (web)
 
 on:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/test-pr-web.yml"
+      - "package*.json"
+      - "svelte.config.js"
+      - "vite.config.ts"
+      - "vitest.config.ts"
+      - "tsconfig.json"
+      - "eslint.config.js"
+      - ".prettier*"
+      - "src/**"
   pull_request:
     branches:
       - "**"
@@ -9,9 +22,11 @@ on:
     paths:
       - ".github/workflows/test-pr-web.yml"
       - "package*.json"
-      - "svelte.config.json"
-      - "vite.config.json"
+      - "svelte.config.js"
+      - "vite.config.ts"
+      - "vitest.config.ts"
       - "tsconfig.json"
+      - "eslint.config.js"
       - ".prettier*"
       - "src/**"
 
@@ -30,7 +45,13 @@ jobs:
           cache: "npm"
 
       - name: Get dependencies
-        run: npm i
+        run: npm ci
 
       - name: Check for linting/formatting errors
         run: npm run lint
+
+      - name: Type check
+        run: npm run check
+
+      - name: Unit tests
+        run: npm run test:unit

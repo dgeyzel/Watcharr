@@ -1,2 +1,7 @@
 server/data/
 server/Makefile
+server/.e2e-bin/
+e2e/.data/
+node_modules/
+test-results/
+playwright-report/

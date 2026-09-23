@@ -66,6 +66,16 @@ type ServerConfig struct {
 	// If unprovided, the default Watcharr API key will be used.
 	TMDB_KEY string `json:",omitempty"`
 
+	// Optional: Override the TMDB API base url (default
+	// https://api.themoviedb.org/3). Used to point tests at a stub server.
+	// The TMDB_API_BASE env var takes precedence over this.
+	TMDB_API_BASE string `json:",omitempty"`
+
+	// Optional: Override the TMDB image base url (default
+	// https://image.tmdb.org/t/p). The TMDB_IMAGE_BASE env var takes
+	// precedence over this.
+	TMDB_IMAGE_BASE string `json:",omitempty"`
+
 	// Optional: Point to Plex install to enable plex features.
 	PLEX_HOST string `json:",omitempty"`
 
@@ -116,6 +126,24 @@ func (c *ServerConfig) GetSafe() ServerConfig {
 			ClientSecret: c.TWITCH.ClientSecret,
 		}, // Dont act safe, this contains twitch secrets, needed for config
 	}
+}
+
+// TMDBAPIBase returns the configured TMDB API base url, preferring the
+// TMDB_API_BASE env var. Empty means use the TMDB default.
+func (c *ServerConfig) TMDBAPIBase() string {
+	if v := os.Getenv("TMDB_API_BASE"); v != "" {
+		return v
+	}
+	return c.TMDB_API_BASE
+}
+
+// TMDBImageBase returns the configured TMDB image base url, preferring the
+// TMDB_IMAGE_BASE env var. Empty means use the TMDB default.
+func (c *ServerConfig) TMDBImageBase() string {
+	if v := os.Getenv("TMDB_IMAGE_BASE"); v != "" {
+		return v
+	}
+	return c.TMDB_IMAGE_BASE
 }
 
 type ServerConfigGetByName struct {

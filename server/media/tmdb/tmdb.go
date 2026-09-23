@@ -15,19 +15,40 @@ import (
 
 var ContentStore = gocache.New(time.Hour*24, time.Minute)
 
+// DefaultAPIBase is the TMDB API base url used when none is configured.
+const DefaultAPIBase = "https://api.themoviedb.org/3"
+
+// DefaultImageBase is the TMDB image base url used when none is configured.
+const DefaultImageBase = "https://image.tmdb.org/t/p"
+
 type ContentProvider interface {
 	CacheContentShow(content ShowDetails, onlyUpdate bool) (entity.Content, error)
 	CacheContentMovie(content MovieDetails, onlyUpdate bool) (entity.Content, error)
 }
 
 type TMDB struct {
-	Key             string
+	Key string
+	// Base url of the TMDB API. Overridable so tests can point at a stub.
+	BaseURL string
+	// Base url for TMDB images (poster downloads). Overridable for tests.
+	ImageBaseURL    string
+	client          *http.Client
 	contentProvider ContentProvider
 }
 
-func NewTMDB(key string) *TMDB {
+// NewTMDB creates a TMDB client. Empty base urls use the TMDB defaults.
+func NewTMDB(key string, baseURL string, imageBaseURL string) *TMDB {
+	if baseURL == "" {
+		baseURL = DefaultAPIBase
+	}
+	if imageBaseURL == "" {
+		imageBaseURL = DefaultImageBase
+	}
 	return &TMDB{
-		Key: key,
+		Key:          key,
+		BaseURL:      baseURL,
+		ImageBaseURL: imageBaseURL,
+		client:       &http.Client{Timeout: 15 * time.Second},
 	}
 }
 
@@ -44,7 +65,7 @@ func (t *TMDB) GetKey() string {
 
 func (t *TMDB) apiRequest(ep string, p map[string]string) ([]byte, error) {
 	slog.Debug("tmdbAPIRequest", "endpoint", ep, "params", p)
-	base, err := url.Parse("https://api.themoviedb.org/3")
+	base, err := url.Parse(t.BaseURL)
 	if err != nil {
 		return nil, errors.New("failed to parse api uri")
 	}
@@ -64,7 +85,7 @@ func (t *TMDB) apiRequest(ep string, p map[string]string) ([]byte, error) {
 	base.RawQuery = params.Encode()
 
 	// Run get request
-	res, err := http.Get(base.String())
+	res, err := t.client.Get(base.String())
 	if err != nil {
 		return nil, err
 	}
