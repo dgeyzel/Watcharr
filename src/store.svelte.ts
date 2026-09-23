@@ -9,6 +9,7 @@ import type {
 	UserSettings,
 	WLDetailedViewOption,
 } from "./types";
+import { UserPermission } from "./types";
 import type { Notification } from "./lib/util/notify";
 import { browser } from "$app/environment";
 import { toggleTheme } from "./lib/util/theme";
@@ -99,6 +100,14 @@ const updateSortAndFiltersForQueryParams = () => {
  * they are updated.
  */
 export const store = {
+	/**
+	 * If the current viewer is the signed in admin. Visitors (no token) are
+	 * never admin. Only set once `userInfo` has been fetched with a valid token.
+	 */
+	get isAdmin(): boolean {
+		const u = _store.userInfo;
+		return !!u && (Number(u.permissions) & UserPermission.PERM_ADMIN) !== 0;
+	},
 	get notifications() {
 		return _store.notifications;
 	},

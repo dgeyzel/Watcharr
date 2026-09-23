@@ -48,18 +48,23 @@
 
 <Menu conf={Object.assign(defaultMenuConfig, menuConfig)}>
 	<div class="title">
-		<h4 class="norm sm-caps">{titleText ? titleText : "my tags"}</h4>
-		{#if showManageBtn}
-			<button
-				class={["plain", inManageMode ? "manage-on" : ""].join(" ")}
-				onclick={() => (inManageMode = !inManageMode)}
-			>
-				<Icon i="trash" wh={18} />
+		<h4 class="norm sm-caps">
+			{titleText ? titleText : store.isAdmin ? "my tags" : "tags"}
+		</h4>
+		<!-- Only the admin can manage tags, visitors just browse them. -->
+		{#if store.isAdmin}
+			{#if showManageBtn}
+				<button
+					class={["plain", inManageMode ? "manage-on" : ""].join(" ")}
+					onclick={() => (inManageMode = !inManageMode)}
+				>
+					<Icon i="trash" wh={18} />
+				</button>
+			{/if}
+			<button class="plain" onclick={() => (tagModalOpen = !tagModalOpen)}>
+				<Icon i="add" wh={22} />
 			</button>
 		{/if}
-		<button class="plain" onclick={() => (tagModalOpen = !tagModalOpen)}>
-			<Icon i="add" wh={22} />
-		</button>
 	</div>
 	{#if allTags && allTags.length > 0}
 		{#if inManageMode}
@@ -87,7 +92,9 @@
 			{/each}
 		</div>
 	{:else}
-		<span style="margin-top: 0;">You have no tags yet!</span>
+		<span style="margin-top: 0;">
+			{store.isAdmin ? "You have no tags yet!" : "No tags yet."}
+		</span>
 	{/if}
 </Menu>
 

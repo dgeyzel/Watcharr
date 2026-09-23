@@ -13,6 +13,8 @@
 	import SortMenu from "@/lib/nav/SortMenu.svelte";
 	import TagMenu from "@/lib/tag/TagMenu.svelte";
 	import { req } from "@/lib/util/api";
+	import { getPublicTags } from "@/lib/public/api";
+	import { isAdminOnlyRoute } from "@/lib/util/routes";
 	import { isTouch } from "@/lib/util/helpers";
 	import { store, defaultSort } from "@/store.svelte";
 	import type {
@@ -42,13 +44,22 @@
 	let scroll = window.scrollY;
 
 	function handleProfileClick() {
-		if (!localStorage.getItem("token")) {
-			goto(resolve("/admin"));
-		} else {
-			closeAllSubMenus("sub");
-			subMenuShown = !subMenuShown;
-		}
+		closeAllSubMenus("sub");
+		subMenuShown = !subMenuShown;
 	}
+
+	let initialDataLoaded = $state(false);
+
+	// Visitors can't use admin only pages, send them home.
+	$effect(() => {
+		if (
+			initialDataLoaded &&
+			!store.isAdmin &&
+			isAdminOnlyRoute(page.url.pathname)
+		) {
+			goto(resolve("/"), { replaceState: true });
+		}
+	});
 
 	function handleSearch(ev: KeyboardEvent) {
 		if (
@@ -110,9 +121,15 @@
 	}
 
 	async function getInitialData() {
+		await loadInitialData();
+		initialDataLoaded = true;
+	}
+
+	async function loadInitialData() {
 		if (!localStorage.getItem("token")) {
-			console.warn("getInitialData: No token found, redirecting to login!");
-			goto(resolve("/admin?again=1"));
+			// Visitor: browse the owner's list read only.
+			console.debug("getInitialData: No token, loading public data.");
+			store.tags = await getPublicTags();
 			return;
 		}
 		const [u, s, f, fo, ts] = await Promise.all([
@@ -256,8 +273,9 @@
 			<Icon i="search" wh={19} />
 		</div>
 		<div class="btns">
-			<!-- Detailed posters only supported on own watched list currently -->
-			{#if page.url?.pathname === "/" || page.url?.pathname.startsWith("/search")}
+			<!-- Detailed posters only supported on own watched list currently
+			  (admin only, it can show numeric ratings). -->
+			{#if store.isAdmin && (page.url?.pathname === "/" || page.url?.pathname.startsWith("/search"))}
 				<button
 					class="plain other detailedView"
 					onclick={() => {
@@ -338,33 +356,35 @@
 					showManageBtn={true}
 				/>
 			{/if}
-			<button
-				class="plain other discover"
-				onclick={() => goto(resolve("/discover"))}
-				use:tooltip={{ text: "Discover", pos: "bot" }}
-			>
-				<Icon i="compass" wh={26} />
-			</button>
-			<button
-				class="plain other following"
-				onclick={() => {
-					closeAllSubMenus("following");
-					followingMenuShown = !followingMenuShown;
-				}}
-				use:tooltip={{
-					text: "Following",
-					pos: "bot",
-					condition: !followingMenuShown,
-				}}
-			>
-				<Icon i="people" wh={26} />
-			</button>
-			{#if followingMenuShown}
-				<FollowingMenu close={() => (followingMenuShown = false)} />
-			{/if}
-			<button class="plain face" onclick={handleProfileClick}>:)</button>
-			{#if subMenuShown}
-				<FaceMenu />
+			{#if store.isAdmin}
+				<button
+					class="plain other discover"
+					onclick={() => goto(resolve("/discover"))}
+					use:tooltip={{ text: "Discover", pos: "bot" }}
+				>
+					<Icon i="compass" wh={26} />
+				</button>
+				<button
+					class="plain other following"
+					onclick={() => {
+						closeAllSubMenus("following");
+						followingMenuShown = !followingMenuShown;
+					}}
+					use:tooltip={{
+						text: "Following",
+						pos: "bot",
+						condition: !followingMenuShown,
+					}}
+				>
+					<Icon i="people" wh={26} />
+				</button>
+				{#if followingMenuShown}
+					<FollowingMenu close={() => (followingMenuShown = false)} />
+				{/if}
+				<button class="plain face" onclick={handleProfileClick}>:)</button>
+				{#if subMenuShown}
+					<FaceMenu />
+				{/if}
 			{/if}
 		</div>
 	</div>
@@ -380,7 +400,9 @@
 {#await getInitialData()}
 	<Spinner />
 {:then}
-	{@render children?.()}
+	{#if store.isAdmin || !isAdminOnlyRoute(page.url.pathname)}
+		{@render children?.()}
+	{/if}
 {:catch err}
 	<Error
 		pretty="Couldn't fetch app data!"

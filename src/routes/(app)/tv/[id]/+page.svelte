@@ -23,6 +23,11 @@
 		WatchedStatus,
 	} from "@/types";
 	import FollowedThoughts from "@/lib/content/FollowedThoughts.svelte";
+	import { getPublicMedia } from "@/lib/public/api";
+	import { ReqerError } from "@/lib/util/fetch";
+	import PublicReview from "@/lib/content/PublicReview.svelte";
+	import HiddenToggle from "@/lib/content/HiddenToggle.svelte";
+	import NotFound from "@/lib/content/NotFound.svelte";
 	import tooltip from "@/lib/actions/tooltip.js";
 	import AddToTagButton from "@/lib/tag/AddToTagButton.svelte";
 	import PageBackdrop from "@/lib/generic/PageBackdrop.svelte";
@@ -42,6 +47,8 @@
 
 	let show: Media | undefined = $state();
 	let pageError: unknown | undefined = $state();
+	// Visitor asked for a title that is not visible.
+	let notFound = $state(false);
 	let countAsPlayModalSignal: Signal<boolean> | undefined = $state();
 
 	$effect(() => {
@@ -49,7 +56,22 @@
 			try {
 				show = undefined;
 				pageError = undefined;
+				notFound = false;
 				if (!data.tvId) {
+					return;
+				}
+				if (!store.isAdmin) {
+					// Visitors only see titles on the owner's (visible) list.
+					try {
+						show = await getPublicMedia("tv", data.tvId);
+					} catch (err) {
+						if (err instanceof ReqerError && err.response?.status === 404) {
+							notFound = true;
+							show = { ids: {} };
+							return;
+						}
+						throw err;
+					}
 					return;
 				}
 				const resp = await req.get<Media>(`/content/tv/${data.tvId}`, {
@@ -130,7 +152,7 @@
 	<Error pretty="Failed to load tv show!" error={pageError} />
 {:else if !show}
 	<Spinner />
-{:else if Object.keys(show).length > 0}
+{:else if !notFound && Object.keys(show).length > 0}
 	{#if show?.extBackdropPath}
 		<PageBackdrop
 			src={"https://www.themoviedb.org/t/p/w1920_and_h800_multi_faces" +
@@ -171,7 +193,7 @@
 
 						<div class="btns">
 							<ViewTrailerButton videos={show.videos} />
-							{#if show.watched}
+							{#if store.isAdmin && show.watched}
 								<div class="other-side">
 									<AddToTagButton watchedItem={show.watched} />
 									<button
@@ -213,78 +235,89 @@
 				</div>
 			</div>
 
-			<MyReview
-				watched={show.watched}
-				contentTitle={show.name}
-				onRatingChanged={(n) => contentChanged(undefined, n)}
-				onStatusChanged={(n) => contentChanged(n)}
-				onThoughtsChanged={(newThoughts) => {
-					return contentChanged(undefined, undefined, newThoughts);
-				}}
-			/>
+			{#if store.isAdmin}
+				<MyReview
+					watched={show.watched}
+					contentTitle={show.name}
+					onRatingChanged={(n) => contentChanged(undefined, n)}
+					onStatusChanged={(n) => contentChanged(n)}
+					onThoughtsChanged={(newThoughts) => {
+						return contentChanged(undefined, undefined, newThoughts);
+					}}
+				/>
+				{#if show.watched}
+					<HiddenToggle bind:watched={show.watched} />
+				{/if}
+			{:else if show.watched}
+				<PublicReview watched={show.watched} />
+			{/if}
 		</div>
 
 		{#if countAsPlayModalSignal}
 			<CountAsPlayModal onDecision={countAsPlayModalSignal} />
 		{/if}
 
+		<!-- Cast, similar titles, activity and seasons are admin only (visitors
+		  can't open person pages or titles that aren't on the list). -->
 		<div class="page">
-			{#if data.tvId}
-				<FollowedThoughts mediaType="tv" mediaId={data.tvId} />
-			{/if}
-
-			{#await getTvCredits()}
-				<Spinner />
-			{:then credits}
-				{#if credits.topCrew?.length > 0}
-					<TopCrewList topCrew={credits.topCrew} />
+			{#if store.isAdmin}
+				{#if data.tvId}
+					<FollowedThoughts mediaType="tv" mediaId={data.tvId} />
 				{/if}
 
-				{#if credits.cast?.length > 0}
-					<HorizontalList title="Cast">
-						{#each credits.cast?.slice(0, 50) as cast (cast.credit_id)}
-							<PersonPoster
-								id={cast.id}
-								name={cast.name}
-								path={cast.profile_path}
-								role={cast.character}
-								zoomOnHover={false}
-							/>
-						{/each}
-					</HorizontalList>
+				{#await getTvCredits()}
+					<Spinner />
+				{:then credits}
+					{#if credits.topCrew?.length > 0}
+						<TopCrewList topCrew={credits.topCrew} />
+					{/if}
+
+					{#if credits.cast?.length > 0}
+						<HorizontalList title="Cast">
+							{#each credits.cast?.slice(0, 50) as cast (cast.credit_id)}
+								<PersonPoster
+									id={cast.id}
+									name={cast.name}
+									path={cast.profile_path}
+									role={cast.character}
+									zoomOnHover={false}
+								/>
+							{/each}
+						</HorizontalList>
+					{/if}
+				{:catch err}
+					<Error error={err} pretty="Failed to load cast!" />
+				{/await}
+
+				{#if show.similar}
+					<SimilarContent similar={show.similar} />
 				{/if}
-			{:catch err}
-				<Error error={err} pretty="Failed to load cast!" />
-			{/await}
 
-			{#if show.similar}
-				<SimilarContent similar={show.similar} />
-			{/if}
+				{#if show.watched}
+					<Activity
+						activity={show.watched.activity}
+						onRemoved={(a) => activityRemovedHook(show?.watched, a)}
+					/>
+				{/if}
 
-			{#if show.watched}
-				<Activity
-					activity={show.watched.activity}
-					onRemoved={(a) => activityRemovedHook(show?.watched, a)}
-				/>
-			{/if}
-
-			{#if data?.tvId && show.seasons}
-				<SeasonsList
-					tvId={data.tvId}
-					seasons={show.seasons}
-					watchedItem={show.watched}
-					lastViewedSeason={show.watched?.lastViewedSeason}
-					lastViewedSeasonChanged={(wid, lvs) => {
-						if (show?.watched && show.watched.id === wid) {
-							show.watched.lastViewedSeason = lvs;
-						}
-					}}
-				/>
+				{#if data?.tvId && show.seasons}
+					<SeasonsList
+						tvId={data.tvId}
+						seasons={show.seasons}
+						watchedItem={show.watched}
+						lastViewedSeason={show.watched?.lastViewedSeason}
+						lastViewedSeasonChanged={(wid, lvs) => {
+							if (show?.watched && show.watched.id === wid) {
+								show.watched.lastViewedSeason = lvs;
+							}
+						}}
+					/>
+				{/if}
 			{/if}
 		</div>
 	</div>
 {:else}
-	Show not found
+	<NotFound what="Show" />
 {/if}
 
 <style lang="scss">
@@ -308,7 +341,6 @@
 				gap: 8px;
 				margin-top: auto;
 
-				a.btn,
 				button {
 					max-width: fit-content;
 					overflow: hidden;

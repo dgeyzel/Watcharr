@@ -40,24 +40,27 @@
 	>
 		Date Added
 	</button>
-	<button
-		class={`plain ${getDirectionClass("LASTCHANGED")}`}
-		onclick={() => sortClicked("LASTCHANGED")}
-	>
-		Last Changed
-	</button>
-	<button
-		class={`plain ${getDirectionClass("LASTFIN")}`}
-		onclick={() => sortClicked("LASTFIN")}
-	>
-		Last Finished
-	</button>
-	<button
-		class={`plain ${getDirectionClass("RATING")}`}
-		onclick={() => sortClicked("RATING")}
-	>
-		Rating
-	</button>
+	<!-- These sorts use private data (activity, numeric rating), admin only. -->
+	{#if store.isAdmin}
+		<button
+			class={`plain ${getDirectionClass("LASTCHANGED")}`}
+			onclick={() => sortClicked("LASTCHANGED")}
+		>
+			Last Changed
+		</button>
+		<button
+			class={`plain ${getDirectionClass("LASTFIN")}`}
+			onclick={() => sortClicked("LASTFIN")}
+		>
+			Last Finished
+		</button>
+		<button
+			class={`plain ${getDirectionClass("RATING")}`}
+			onclick={() => sortClicked("RATING")}
+		>
+			Rating
+		</button>
+	{/if}
 	<button
 		class={`plain ${getDirectionClass("ALPHA")}`}
 		onclick={() => sortClicked("ALPHA")}

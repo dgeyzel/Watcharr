@@ -2,6 +2,7 @@
 	import { page } from "$app/state";
 	import { afterNavigate, goto } from "$app/navigation";
 	import { req } from "@/lib/util/api.js";
+	import { getPublicWatchedPage } from "@/lib/public/api";
 	import Poster from "@/lib/poster/Poster.svelte";
 	import PosterList from "@/lib/poster/PosterList.svelte";
 	import { store } from "@/store.svelte.js";
@@ -67,6 +68,21 @@
 		if (!nextLoadParams.query) {
 			console.warn("load: There is no search query!");
 			return;
+		}
+		if (!store.isAdmin) {
+			// Visitors only search the owner's list (never TMDB).
+			const r = await getPublicWatchedPage(
+				"/public/watched",
+				{
+					page: nextLoadParams.page,
+					q: nextLoadParams.query,
+					sort: "ALPHA",
+					sortDir: "asc",
+				},
+				signal,
+			);
+			scroll.dataLoaded();
+			return r as unknown as PaginationResponse<Media, SearchResponseMeta>;
 		}
 		const r = await req.get<PaginationResponse<Media, SearchResponseMeta>>(
 			`/search`,
@@ -168,26 +184,30 @@
 		{#if data?.query}
 			<!-- Uses data?.query instead of store.searchQuery,
 			 	so that the debounce of search is respected. -->
-			{#await searchUsers(data?.query) then results}
-				{#if results?.length > 0}
-					<UsersList users={results} />
-				{/if}
-			{:catch err}
-				<Error pretty="Failed to load users!" error={err} />
-			{/await}
+			{#if store.isAdmin}
+				{#await searchUsers(data?.query) then results}
+					{#if results?.length > 0}
+						<UsersList users={results} />
+					{/if}
+				{:catch err}
+					<Error pretty="Failed to load users!" error={err} />
+				{/await}
 
-			<PageTitle title="Results">
-				<MediaTypeFilter
-					active={searchType}
-					disabled={dataLoader.state.reqLoading || showingResultsFromMyList}
-					onChange={(nowActive) => {
-						setActiveSearchFilter(nowActive as SearchType | undefined);
-					}}
-				/>
-				<Filters />
-			</PageTitle>
+				<PageTitle title="Results">
+					<MediaTypeFilter
+						active={searchType}
+						disabled={dataLoader.state.reqLoading || showingResultsFromMyList}
+						onChange={(nowActive) => {
+							setActiveSearchFilter(nowActive as SearchType | undefined);
+						}}
+					/>
+					<Filters />
+				</PageTitle>
+			{:else}
+				<PageTitle title="Results"><span></span></PageTitle>
+			{/if}
 
-			{#if showingResultsFromMyList}
+			{#if store.isAdmin && showingResultsFromMyList}
 				<button
 					class="from-my-list-msg plain"
 					onclick={dontPreferMyListClicked}

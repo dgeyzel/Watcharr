@@ -143,6 +143,8 @@ export interface Watched {
 	status: WatchedStatus;
 	thoughts: string;
 	pinned: boolean;
+	/** Hidden from visitors (a draft). Admin only. */
+	hidden?: boolean;
 
 	activity?: Activity[];
 	watchedSeasons?: WatchedSeason[];

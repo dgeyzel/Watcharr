@@ -24,8 +24,6 @@
 	let settings = $derived(store.userSettings);
 	let selectedTheme = $derived(store.appTheme);
 
-	let privateDisabled = $state(false);
-	let privateThoughtsDisabled = $state(false);
 	let exportModalOpen = $state(false);
 	let hideSpoilersDisabled = $state(false);
 	let countryDisabled = $state(false);
@@ -214,40 +212,6 @@
 					}}
 				/>
 			</Setting>
-
-			<Setting title="Private" desc="Hide your profile from others?" row>
-				<Checkbox
-					name="private"
-					disabled={privateDisabled}
-					value={settings?.private}
-					toggled={(on) => {
-						privateDisabled = true;
-						updateUserSetting("private", on, () => {
-							privateDisabled = false;
-						});
-					}}
-				/>
-			</Setting>
-
-			{#if !settings?.private}
-				<Setting
-					title="Private Thoughts"
-					desc="Hide your watched list thoughts from followers?"
-					row
-				>
-					<Checkbox
-						name="privateThoughts"
-						disabled={privateThoughtsDisabled}
-						value={settings?.privateThoughts}
-						toggled={(on) => {
-							privateThoughtsDisabled = true;
-							updateUserSetting("privateThoughts", on, () => {
-								privateThoughtsDisabled = false;
-							});
-						}}
-					/>
-				</Setting>
-			{/if}
 
 			<Setting
 				title="Hide Spoilers"

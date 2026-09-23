@@ -1,11 +1,10 @@
 <script lang="ts">
 	import { store } from "@/store.svelte";
 	import Menu from "../Menu.svelte";
-	import { parseTokenPayload, userHasPermission } from "../util/helpers";
+	import { userHasPermission } from "../util/helpers";
 	import { UserPermission } from "@/types";
 	import { goto } from "$app/navigation";
 	import { clearWatcharrData } from "../logout";
-	import { notify } from "../util/notify";
 	import AboutModal from "./AboutModal.svelte";
 	import { resolve } from "$app/paths";
 
@@ -14,7 +13,8 @@
 
 	function logout() {
 		clearWatcharrData();
-		goto(resolve("/"));
+		// Full reload so the app starts over in visitor mode.
+		location.href = resolve("/");
 	}
 
 	function profile() {
@@ -29,31 +29,6 @@
 		goto(resolve("/manage_users"));
 	}
 
-	function shareWatchedList() {
-		const nid = notify({ type: "loading", text: "Getting link" });
-		const ud = parseTokenPayload();
-		console.log(ud);
-		if (ud?.userId && ud?.username) {
-			const shareLink = `${window.location.origin}/lists/${ud.userId}/${ud.username}`;
-			navigator.clipboard
-				.writeText(shareLink)
-				.then(() => {
-					notify({ id: nid, type: "success", text: "Copied share link" });
-				})
-				.catch((r) => {
-					console.error("Failed to copy list share link", r);
-					notify({
-						id: nid,
-						type: "error",
-						text: `Failed to copy share link:<br/><a href="${shareLink}" target="_blank">${shareLink}</a>`,
-						time: 20000,
-					});
-				});
-		} else {
-			notify({ id: nid, type: "error", text: "Failed to get link" });
-		}
-	}
-
 	function closeAbout() {
 		aboutModalOpen = false;
 	}
@@ -64,9 +39,6 @@
 		<h5 title={user.username}>Hi {user.username}!</h5>
 	{/if}
 	<button class="plain" onclick={() => profile()}>Profile</button>
-	{#if !store.userSettings?.private}
-		<button class="plain" onclick={() => shareWatchedList()}>Share List</button>
-	{/if}
 	{#if user && userHasPermission(user.permissions, UserPermission.PERM_ADMIN)}
 		<button class="plain" onclick={() => serverSettings()}>Settings</button>
 		<button class="plain" onclick={() => userManagement()}>Users</button>

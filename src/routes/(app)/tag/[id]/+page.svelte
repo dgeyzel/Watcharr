@@ -9,6 +9,7 @@
 	import CreateTagModal from "@/lib/tag/CreateTagModal.svelte";
 	import Tag from "@/lib/tag/Tag.svelte";
 	import { req } from "@/lib/util/api";
+	import { getPublicWatchedPage } from "@/lib/public/api";
 	import infScroll from "@/lib/util/infScroll";
 	import paginatedLoader, {
 		PaginatedLoaderRunFnAction,
@@ -46,13 +47,19 @@
 			console.warn("load: Missing tag id!");
 			return;
 		}
-		const r = await req.get<PaginationResponse<Media, undefined>>(
-			`/tag/${meta.tagId}/watched`,
-			{
-				params: nextLoadParams,
-				signal,
-			},
-		);
+		const r = store.isAdmin
+			? await req.get<PaginationResponse<Media, undefined>>(
+					`/tag/${meta.tagId}/watched`,
+					{
+						params: nextLoadParams,
+						signal,
+					},
+				)
+			: await getPublicWatchedPage(
+					`/public/tag/${meta.tagId}/watched`,
+					nextLoadParams,
+					signal,
+				);
 		scroll.dataLoaded();
 		return r;
 	}
@@ -114,9 +121,11 @@
 				<Icon i="tag" wh={20} />
 				<Tag
 					{tag}
-					onClick={() => {
-						tagEditModalShown = !tagEditModalShown;
-					}}
+					onClick={store.isAdmin
+						? () => {
+								tagEditModalShown = !tagEditModalShown;
+							}
+						: undefined}
 				/>
 			</div>
 		</div>
@@ -137,10 +146,14 @@
 			<div class="empty-list">
 				<Icon i="ticket" wh={80} />
 				<h2 class="norm">This tag is empty!</h2>
-				<h4 class="norm">
-					{`${store.hasActiveFilters ? "Try removing your active filters or a" : "A"}`}dd
-					entries to this tag via its content page.
-				</h4>
+				{#if store.isAdmin}
+					<h4 class="norm">
+						{`${store.hasActiveFilters ? "Try removing your active filters or a" : "A"}`}dd
+						entries to this tag via its content page.
+					</h4>
+				{:else if store.hasActiveFilters}
+					<h4 class="norm">Try removing your active filters.</h4>
+				{/if}
 				{#if store.hasActiveFilters}
 					<button onclick={() => clearActiveFilters()}>Clear Filters</button>
 				{/if}

@@ -1,6 +1,6 @@
-import { expect, loginAsAdmin, test } from "./fixtures";
+import { expect, loginThroughForm, test } from "./fixtures";
 
-test("login page shows the fork footer", async ({ page }) => {
+test("admin login page shows the fork footer", async ({ page }) => {
 	await page.goto("/admin");
 	const footer = page.locator("footer");
 	await expect(footer.getByRole("link", { name: "fork" })).toHaveAttribute(
@@ -16,8 +16,8 @@ test("login page shows the fork footer", async ({ page }) => {
 	);
 });
 
-test("admin can log in and sees the seeded list", async ({ page }) => {
-	await loginAsAdmin(page);
+test("admin can log in through the form", async ({ page }) => {
+	await loginThroughForm(page);
 	await expect(page.getByText("Fight Club").first()).toBeVisible();
 	await expect(page.locator("footer")).toBeVisible();
 });

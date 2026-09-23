@@ -81,18 +81,21 @@
 			(played)
 		{/if}
 	</button>
-	<button
-		class={`plain ${store.activeFilters.status.includes("hold") ? "on" : ""}`}
-		onclick={() => filterClicked("status", "hold")}
-	>
-		on hold
-	</button>
-	<button
-		class={`plain ${store.activeFilters.status.includes("dropped") ? "on" : ""}`}
-		onclick={() => filterClicked("status", "dropped")}
-	>
-		dropped
-	</button>
+	<!-- On hold and dropped are admin only statuses. -->
+	{#if store.isAdmin}
+		<button
+			class={`plain ${store.activeFilters.status.includes("hold") ? "on" : ""}`}
+			onclick={() => filterClicked("status", "hold")}
+		>
+			on hold
+		</button>
+		<button
+			class={`plain ${store.activeFilters.status.includes("dropped") ? "on" : ""}`}
+			onclick={() => filterClicked("status", "dropped")}
+		>
+			dropped
+		</button>
+	{/if}
 </Menu>
 
 <style lang="scss">

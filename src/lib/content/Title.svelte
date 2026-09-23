@@ -45,13 +45,16 @@
 			</span>
 		{/if}
 	</span>
-	<span
-		class="rating"
-		title={`Rating: ${vote} out of 10 (based on ${voteCount ?? 0} votes)`}
-	>
-		<span>*</span>
-		{vote}
-	</span>
+	<!-- Visitor pages never pass a vote score (no numeric ratings are public). -->
+	{#if voteAverage !== undefined}
+		<span
+			class="rating"
+			title={`Rating: ${vote} out of 10 (based on ${voteCount ?? 0} votes)`}
+		>
+			<span>*</span>
+			{vote}
+		</span>
+	{/if}
 </span>
 
 <style lang="scss">

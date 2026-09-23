@@ -2,6 +2,7 @@ import { goto } from "$app/navigation";
 import { resolve } from "$app/paths";
 import { clearWatcharrData } from "../logout";
 import { notify } from "./notify";
+import { isAdminOnlyRoute } from "./routes";
 
 type ReqerParams = object;
 
@@ -224,8 +225,12 @@ export class Reqer {
 			if (this.watcharrAuthed) {
 				const token = localStorage.getItem("token");
 				if (!token) {
-					console.error("No token, going to login.");
-					goto(resolve("/admin?again=1"));
+					// Visitors have no token, only send to the login when on an
+					// admin page. Public pages should use `noAuthReq`.
+					if (isAdminOnlyRoute(location.pathname)) {
+						console.error("No token, going to login.");
+						goto(resolve("/admin?again=1"));
+					}
 					throw new ReqerError("No auth token found");
 				}
 				headers.append("Authorization", token);
@@ -258,10 +263,17 @@ export class Reqer {
 			console.error("Reqer->do: Errored!", err);
 			if (err instanceof ReqerError) {
 				if (this.watcharrAuthed && err.response?.status === 401) {
-					console.error("Recieved 401 response, going to login.");
-					notify({ text: "Request Authorization Failed!", type: "error" });
 					clearWatcharrData();
-					goto(resolve("/admin?again=1"));
+					if (isAdminOnlyRoute(location.pathname)) {
+						console.error("Recieved 401 response, going to login.");
+						notify({ text: "Request Authorization Failed!", type: "error" });
+						goto(resolve("/admin?again=1"));
+					} else {
+						// Token is no longer valid on a public page, carry on as a
+						// visitor (never redirect visitors to the login).
+						console.warn("Recieved 401 response, reloading as a visitor.");
+						location.reload();
+					}
 				}
 				throw err;
 			} else if (err instanceof Error) {

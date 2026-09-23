@@ -7,6 +7,7 @@
 	import PosterList from "@/lib/poster/PosterList.svelte";
 	import Spinner from "@/lib/Spinner.svelte";
 	import { req } from "@/lib/util/api";
+	import { getPublicWatchedPage } from "@/lib/public/api";
 	import infScroll from "@/lib/util/infScroll";
 	import paginatedLoader from "@/lib/util/paginatedLoader.svelte";
 	import { clearActiveFilters, store } from "@/store.svelte";
@@ -30,10 +31,12 @@
 			console.warn("load: Already on this page, not loading it again!");
 			return;
 		}
-		const r = await req.get<PaginationResponse<Media, undefined>>(`/watched`, {
-			params: nextLoadParams,
-			signal,
-		});
+		const r = store.isAdmin
+			? await req.get<PaginationResponse<Media, undefined>>(`/watched`, {
+					params: nextLoadParams,
+					signal,
+				})
+			: await getPublicWatchedPage("/public/watched", nextLoadParams, signal);
 		scroll.dataLoaded();
 		return r;
 	}
@@ -70,7 +73,7 @@
 </script>
 
 <svelte:head>
-	<title>Watched List</title>
+	<title>{store.isAdmin ? "Watched List" : "Reviews"}</title>
 </svelte:head>
 
 <!-- <span
@@ -102,13 +105,20 @@
 	{:else if !dataLoader.state.reqLoading && !dataLoader.state.reqLoadError}
 		<div class="empty-list">
 			<Icon i={store.hasActiveFilters ? "filter-circle" : "reel"} wh={80} />
-			<h2 class="norm">Your list looks empty!</h2>
-			<h4 class="norm">
-				Try {`${store.hasActiveFilters ? "removing your active filters or" : ""}`}
-				searching for something you would like to add.
-			</h4>
-			{#if !store.hasActiveFilters}
-				<button onclick={() => goto(resolve("/import"))}>Import</button>
+			{#if store.isAdmin}
+				<h2 class="norm">Your list looks empty!</h2>
+				<h4 class="norm">
+					Try {`${store.hasActiveFilters ? "removing your active filters or" : ""}`}
+					searching for something you would like to add.
+				</h4>
+				{#if !store.hasActiveFilters}
+					<button onclick={() => goto(resolve("/import"))}>Import</button>
+				{/if}
+			{:else}
+				<h2 class="norm">Nothing here yet!</h2>
+				{#if store.hasActiveFilters}
+					<h4 class="norm">Try removing your active filters.</h4>
+				{/if}
 			{/if}
 			{#if store.hasActiveFilters}
 				<button onclick={() => clearActiveFilters()}>Clear Filters</button>

@@ -22,6 +22,8 @@
 	import { decode } from "blurhash";
 	import WatchedDeleteModal from "../watched/WatchedDeleteModal.svelte";
 	import { resolve } from "$app/paths";
+	import { store } from "@/store.svelte";
+	import Icon from "../Icon.svelte";
 
 	interface Props {
 		media: Media;
@@ -83,6 +85,9 @@
 
 	// If the item was just deleted from watched list (via this poster.)
 	let justDeletedFromWatcheds = $state(false);
+
+	// Visitors get a read only poster: status only, no rating, no actions.
+	const readOnly = $derived(!store.isAdmin);
 
 	const meta:
 		| {
@@ -353,9 +358,14 @@
 				}}
 			/>
 		{/if}
-		{#if watched && meta && !posterActive}
+		{#if !readOnly && watched && meta && !posterActive}
 			<!-- Must be on watched list, and poster not hovered -->
 			<ExtraDetails {...buildExtraDetails(meta.type, watched)} />
+		{/if}
+		{#if !readOnly && watched?.hidden}
+			<span class="hidden-badge" title="Hidden from visitors">
+				<Icon i="eye-closed" wh={14} />Hidden
+			</span>
 		{/if}
 		<div
 			onclick={(e) => {
@@ -387,7 +397,17 @@
 				<span>{media.summary}</span>
 			</a>
 
-			{#if !hideButtons}
+			{#if readOnly}
+				{#if !hideButtons && watched?.status}
+					<div class="buttons">
+						<PosterStatus
+							status={watched.status}
+							handleStatusClick={() => {}}
+							disableInteraction={true}
+						/>
+					</div>
+				{/if}
+			{:else if !hideButtons}
 				<div class="buttons">
 					<PosterRating
 						rating={watched?.rating}
@@ -449,6 +469,24 @@
 
 	li.just-deleted:not(.active) {
 		filter: grayscale(0.8) blur(1px);
+	}
+
+	.hidden-badge {
+		display: flex;
+		align-items: center;
+		gap: 4px;
+		position: absolute;
+		top: 6px;
+		left: 6px;
+		z-index: 2;
+		padding: 2px 6px;
+		border-radius: 5px;
+		font-size: 11px;
+		font-weight: bold;
+		color: white;
+		background-color: rgba(0, 0, 0, 0.75);
+		fill: white;
+		pointer-events: none;
 	}
 
 	.container {
