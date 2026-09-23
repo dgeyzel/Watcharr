@@ -45,3 +45,5 @@ data/
 # Build artifacts
 server/ui
 server/watcharr
+
+FORK_SPEC.md
