@@ -1,7 +1,7 @@
 import { expect, loginAsAdmin, test } from "./fixtures";
 
 test("login page shows the fork footer", async ({ page }) => {
-	await page.goto("/login");
+	await page.goto("/admin");
 	const footer = page.locator("footer");
 	await expect(footer.getByRole("link", { name: "fork" })).toHaveAttribute(
 		"href",

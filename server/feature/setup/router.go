@@ -1,7 +1,10 @@
 package setup
 
 import (
+	"fmt"
+	"log/slog"
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/sbondCo/Watcharr/feature/auth"
@@ -25,6 +28,12 @@ func NewRouter(br *router.BaseRouter, authProvider AuthProvider) *Router {
 	}
 }
 
+type CreateAdminRequest struct {
+	auth.UserRegisterRequest
+	// Token printed to the server log at startup.
+	SetupToken string `json:"setupToken" binding:"required"`
+}
+
 // Since we cannot remove these setup routes after they are registered,
 // each route/service should ensure we are still in setup before continuing.
 // After server restart, these routes shouldn't exist if setup finished
@@ -39,7 +48,15 @@ func (r *Router) AddRoutes() {
 	// Server setup routes are being added, so we are in setup now.
 	setupglob.ServerInSetup = true
 
-	setup.POST("/create_admin", r.CreateAdmin)
+	token, err := setupglob.NewSetupToken()
+	if err != nil {
+		slog.Error("Failed to generate setup token, setup will not be possible", "error", err)
+	} else {
+		slog.Warn("Server is in setup. Use this setup token to create the admin account.", "setup_token", token)
+		fmt.Printf("\n  ==> Setup token (needed to create the admin account): %s\n\n", token)
+	}
+
+	setup.POST("/create_admin", router.NewRateLimiter(12*time.Second, 5).Middleware(), r.CreateAdmin)
 }
 
 // Create first user (which will be an admin).
@@ -48,18 +65,23 @@ func (r *Router) CreateAdmin(c *gin.Context) {
 		c.JSON(http.StatusForbidden, router.ErrorResponse{Error: "not in setup"})
 		return
 	}
-	var user auth.UserRegisterRequest
-	if c.ShouldBindJSON(&user) == nil {
-		response, err := r.authProvider.RegisterFirstUser(&user)
-		if err != nil {
-			c.JSON(http.StatusForbidden, router.ErrorResponse{Error: err.Error()})
-			return
-		} else {
-			// Set in setup to false after first user registered successfully
-			setupglob.ServerInSetup = false
-		}
-		c.JSON(http.StatusOK, response)
+	var req CreateAdminRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, router.ErrorResponse{Error: "username, password and setup token are required"})
 		return
 	}
-	c.Status(400)
+	if !setupglob.ValidSetupToken(req.SetupToken) {
+		slog.Warn("CreateAdmin: invalid setup token provided", "ip", c.ClientIP())
+		c.JSON(http.StatusForbidden, router.ErrorResponse{Error: "invalid setup token"})
+		return
+	}
+	response, err := r.authProvider.RegisterFirstUser(&req.UserRegisterRequest)
+	if err != nil {
+		c.JSON(http.StatusForbidden, router.ErrorResponse{Error: err.Error()})
+		return
+	}
+	// Setup is finished after the first user registered successfully.
+	setupglob.ServerInSetup = false
+	setupglob.SetupToken = ""
+	c.JSON(http.StatusOK, response)
 }

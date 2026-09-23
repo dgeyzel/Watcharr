@@ -23,6 +23,7 @@ import (
 	"github.com/sbondCo/Watcharr/app"
 	"github.com/sbondCo/Watcharr/config"
 	"github.com/sbondCo/Watcharr/database"
+	"github.com/sbondCo/Watcharr/feature/setup/setupglob"
 	"github.com/sbondCo/Watcharr/internal/testutil/tmdbstub"
 )
 
@@ -39,20 +40,22 @@ type seedItem struct {
 	Rating      float64
 	Thoughts    string
 	Tagged      bool
+	// Hidden from visitors (a draft).
+	Hidden bool
 }
 
 // The fixture list. It covers movies and tv, every status and a tag.
 // Later phases extend it (hidden items, grades).
 var items = []seedItem{
-	{"movie", 550, "FINISHED", 9, "A seeded review of Fight Club.", true},
-	{"movie", 603, "FINISHED", 8, "A seeded review of The Matrix.", false},
-	{"movie", 680, "WATCHING", 0, "", false},
-	{"movie", 13, "PLANNED", 0, "", false},
-	{"movie", 27205, "HOLD", 7, "An on hold review.", true},
-	{"movie", 157336, "DROPPED", 3, "A dropped review.", false},
-	{"tv", 1396, "FINISHED", 10, "A seeded review of Breaking Bad.", true},
-	{"tv", 1399, "WATCHING", 0, "", false},
-	{"tv", 66732, "PLANNED", 0, "", false},
+	{"movie", 550, "FINISHED", 9, "A seeded review of Fight Club.", true, false},
+	{"movie", 603, "FINISHED", 8, "A hidden draft review of The Matrix.", false, true},
+	{"movie", 680, "WATCHING", 0, "", false, false},
+	{"movie", 13, "PLANNED", 0, "", false, false},
+	{"movie", 27205, "HOLD", 7, "An on hold review.", true, false},
+	{"movie", 157336, "DROPPED", 3, "A dropped review.", false, false},
+	{"tv", 1396, "FINISHED", 10, "A seeded review of Breaking Bad.", true, false},
+	{"tv", 1399, "WATCHING", 0, "", false, false},
+	{"tv", 66732, "PLANNED", 0, "", false, false},
 }
 
 func main() {
@@ -72,7 +75,6 @@ func main() {
 	cfg := &config.ServerConfig{
 		JWT_SECRET:      "e2e-jwt-secret-not-for-production-use-000000000000",
 		DEFAULT_COUNTRY: "US",
-		SIGNUP_ENABLED:  true,
 		TMDB_KEY:        "e2e-tmdb-key",
 	}
 	if err := cfg.Write(); err != nil {
@@ -105,8 +107,9 @@ func main() {
 		Token string `json:"token"`
 	}
 	c.do(http.MethodPost, "/api/setup/create_admin", map[string]string{
-		"username": AdminUsername,
-		"password": AdminPassword,
+		"username":   AdminUsername,
+		"password":   AdminPassword,
+		"setupToken": setupglob.SetupToken,
 	}, &auth)
 	c.token = auth.Token
 
@@ -128,6 +131,9 @@ func main() {
 			"rating":      it.Rating,
 			"thoughts":    it.Thoughts,
 		}, &w)
+		if it.Hidden {
+			c.do(http.MethodPut, fmt.Sprintf("/api/watched/%d", w.ID), map[string]any{"hidden": true}, nil)
+		}
 		if it.Tagged {
 			c.do(http.MethodPost, fmt.Sprintf("/api/watched/%d/tag/%d", w.ID, tag.ID), nil, nil)
 		}

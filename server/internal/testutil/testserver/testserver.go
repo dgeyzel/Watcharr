@@ -20,6 +20,7 @@ import (
 	"github.com/sbondCo/Watcharr/app"
 	"github.com/sbondCo/Watcharr/config"
 	"github.com/sbondCo/Watcharr/database/entity"
+	"github.com/sbondCo/Watcharr/feature/setup/setupglob"
 	"github.com/sbondCo/Watcharr/internal/testutil"
 	"github.com/sbondCo/Watcharr/internal/testutil/tmdbstub"
 	"gorm.io/gorm"
@@ -59,7 +60,6 @@ func NewWithOptions(t *testing.T, opts app.Options) *Server {
 	cfg := &config.ServerConfig{
 		JWT_SECRET:      testJWTSecret,
 		DEFAULT_COUNTRY: "US",
-		SIGNUP_ENABLED:  true,
 		TMDB_KEY:        "test-tmdb-key",
 		TMDB_API_BASE:   stub.URL,
 		TMDB_IMAGE_BASE: stub.URL + "/t/p",
@@ -103,8 +103,9 @@ func (s *Server) Do(method string, path string, body any, token string) *httptes
 func (s *Server) SeedAdmin() string {
 	s.t.Helper()
 	rec := s.Do(http.MethodPost, "/api/setup/create_admin", map[string]string{
-		"username": AdminUsername,
-		"password": AdminPassword,
+		"username":   AdminUsername,
+		"password":   AdminPassword,
+		"setupToken": setupglob.SetupToken,
 	}, "")
 	if rec.Code != http.StatusOK {
 		s.t.Fatalf("SeedAdmin: create_admin returned %d: %s", rec.Code, rec.Body.String())
@@ -112,6 +113,19 @@ func (s *Server) SeedAdmin() string {
 	return DecodeJSON[struct {
 		Token string `json:"token"`
 	}](s.t, rec).Token
+}
+
+// AddWatched adds a watched item through the api and returns its id. body is
+// the add request (contentType, tmdbId, status, rating, thoughts...).
+func (s *Server) AddWatched(token string, body map[string]any) uint {
+	s.t.Helper()
+	rec := s.Do(http.MethodPost, "/api/watched", body, token)
+	if rec.Code != http.StatusOK {
+		s.t.Fatalf("AddWatched %v: got %d: %s", body, rec.Code, rec.Body.String())
+	}
+	return DecodeJSON[struct {
+		ID uint `json:"id"`
+	}](s.t, rec).ID
 }
 
 // UserToken inserts a user without admin permissions and returns a signed

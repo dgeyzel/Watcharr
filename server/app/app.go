@@ -18,7 +18,6 @@ import (
 	"github.com/sbondCo/Watcharr/database/entity"
 	"github.com/sbondCo/Watcharr/domain"
 	"github.com/sbondCo/Watcharr/feature/activity"
-	"github.com/sbondCo/Watcharr/feature/arr"
 	"github.com/sbondCo/Watcharr/feature/auth"
 	"github.com/sbondCo/Watcharr/feature/content"
 	"github.com/sbondCo/Watcharr/feature/discover"
@@ -27,10 +26,9 @@ import (
 	"github.com/sbondCo/Watcharr/feature/game"
 	"github.com/sbondCo/Watcharr/feature/img"
 	"github.com/sbondCo/Watcharr/feature/imprt"
-	"github.com/sbondCo/Watcharr/feature/jellyfin"
 	"github.com/sbondCo/Watcharr/feature/job"
-	"github.com/sbondCo/Watcharr/feature/plex"
 	"github.com/sbondCo/Watcharr/feature/profile"
+	"github.com/sbondCo/Watcharr/feature/public"
 	"github.com/sbondCo/Watcharr/feature/search"
 	"github.com/sbondCo/Watcharr/feature/server"
 	"github.com/sbondCo/Watcharr/feature/setup"
@@ -54,6 +52,12 @@ type Options struct {
 // NewEngine creates the Gin engine with every feature's routes registered.
 func NewEngine(db *gorm.DB, cfg *config.ServerConfig, opts Options) *gin.Engine {
 	gine := gin.Default()
+	// Only trust X-Forwarded-For from configured proxies (nil trusts none), the
+	// client ip is used for rate limiting.
+	if err := gine.SetTrustedProxies(cfg.TRUSTED_PROXIES); err != nil {
+		slog.Error("Invalid TRUSTED_PROXIES config, trusting no proxies", "error", err)
+		gine.SetTrustedProxies(nil)
+	}
 
 	// Register our custom validators
 	if v, ok := binding.Validator.Engine().(*validator.Validate); ok {
@@ -85,15 +89,15 @@ func NewEngine(db *gorm.DB, cfg *config.ServerConfig, opts Options) *gin.Engine 
 	gine.NoRoute(noRouteHandler(opts.UIProxyHost))
 
 	api := gine.Group("/api")
+	// Must be added before any routes are registered on the group.
+	api.Use(adminByDefault(db, cfg))
 	br := router.NewBaseRouter(db, api, cfg)
 
 	tmdbService := tmdb.NewTMDB(cfg.TMDB_KEY, cfg.TMDBAPIBase(), cfg.TMDBImageBase())
 
 	contentService := content.NewService(db, tmdbService)
 	tmdbService.AddContentProvider(contentService)
-	plexService := plex.NewService(cfg)
-	authService := auth.NewService(db, cfg, plexService)
-	authTrustedHeaderService := auth.NewTrustedHeaderService(db, cfg, authService)
+	authService := auth.NewService(db, cfg)
 	activityService := activity.NewService(db)
 	userService := user.NewService(db)
 	userManageService := user.NewManageService(db)
@@ -112,20 +116,6 @@ func NewEngine(db *gorm.DB, cfg *config.ServerConfig, opts Options) *gin.Engine 
 		tmdbService,
 		activityService,
 		userService)
-	jellyfinService := jellyfin.NewService(cfg)
-	jellyfinSyncService := jellyfin.NewSyncService(
-		cfg,
-		jellyfinService,
-		watchedService,
-		watchedSeasonService,
-		watchedEpisodeService,
-		activityService)
-	plexSyncService := plex.NewSyncService(
-		plexService,
-		watchedService,
-		watchedSeasonService,
-		watchedEpisodeService,
-		activityService)
 	featureService := feature.NewService(cfg)
 	profileService := profile.NewService(db)
 	followService := follow.NewService(db)
@@ -143,21 +133,18 @@ func NewEngine(db *gorm.DB, cfg *config.ServerConfig, opts Options) *gin.Engine 
 		searchService)
 	importTraktService := imprt.NewTraktService(importService)
 
-	auth.NewRouter(br, authService, authTrustedHeaderService).AddRoutes()
+	auth.NewRouter(br, authService).AddRoutes()
 	content.NewRouter(br, contentService, watchedService, tmdbService).AddRoutes()
 	watched.NewRouter(br, watchedService).AddRoutes()
 	season.NewRouter(br, watchedSeasonService).AddRoutes()
 	episode.NewRouter(br, watchedEpisodeService).AddRoutes()
 	activity.NewRouter(br, activityService).AddRoutes()
 	profile.NewRouter(br, profileService).AddRoutes()
-	jellyfin.NewRouter(br, jellyfinService, jellyfinSyncService).AddRoutes()
-	plex.NewRouter(br, plexSyncService).AddRoutes()
 	user.NewRouter(br, userService, userManageService).AddRoutes()
 	follow.NewRouter(br, followService).AddRoutes()
 	imprt.NewRouter(br, importService, importTraktService).AddRoutes()
-	server.NewRouter(br, plexService, authTrustedHeaderService, userManageService).AddRoutes()
+	server.NewRouter(br, userManageService).AddRoutes()
 	feature.NewRouter(br, featureService).AddRoutes()
-	arr.NewRouter(br, contentService).AddRoutes()
 	job.NewRouter(br).AddRoutes()
 	task.NewRouter(br).AddRoutes()
 	tag.NewRouter(br, tagService).AddRoutes()
@@ -165,6 +152,7 @@ func NewEngine(db *gorm.DB, cfg *config.ServerConfig, opts Options) *gin.Engine 
 	search.NewRouter(br, searchService, watchedService).AddRoutes()
 	discover.NewRouter(br, discoverService, watchedService).AddRoutes()
 	img.NewRouter(br).AddRoutes()
+	public.NewRouter(br, public.NewService(db, cfg, tmdbService)).AddRoutes()
 
 	// Only add setup routes if there are no users found in db.
 	var userCount int64

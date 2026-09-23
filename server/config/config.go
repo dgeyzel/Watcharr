@@ -9,7 +9,6 @@ import (
 	"path"
 	"time"
 
-	"github.com/sbondCo/Watcharr/config/cfgmodel"
 	"github.com/sbondCo/Watcharr/logging"
 	"github.com/sbondCo/Watcharr/media/igdb"
 	"github.com/sbondCo/Watcharr/util"
@@ -23,24 +22,11 @@ var DataPath = func() string {
 	return path
 }()
 
-type TrustedHeaderAuthSetting struct {
-	// Required: Should header auth be enabled?
-	// This bool exists so header auth can be toggled
-	// easily without having to remove configuration.
-	// To be actually enabled, HEADER_NAME must also
-	// be set.
-	Enabled bool `json:"enabled"`
-	// Required: What is the name of the trusted header
-	// that will contain the logged in users username?
-	HeaderName string `json:"headerName"`
-	// Should the frontend attempt auto login if
-	// trusted header auth is enabled.
-	AutoLogin bool `json:"autoLogin"`
-	// Where can we redirect the user to logout
-	// of the auth service?
-	LogoutUrl string `json:"logoutUrl"`
-}
-
+// ServerConfig is read from `watcharr.json` in the data dir.
+//
+// Keys removed in this fork (JELLYFIN_HOST, USE_EMBY, SIGNUP_ENABLED,
+// PLEX_HOST, PLEX_MACHINE_ID, HEADER_AUTH, SONARR, RADARR) may still exist
+// in old config files, they are ignored when read and dropped on next write.
 type ServerConfig struct {
 	// Used to sign JWT tokens. Make sure to make
 	// it strong, just like a very long, complicated password.
@@ -50,17 +36,6 @@ type ServerConfig struct {
 	// region to get correct content streaming providers.
 	// TODO Enforce iso_3166_1 validity (same as tmdb)
 	DEFAULT_COUNTRY string `json:",omitempty"`
-
-	// Optional: Point to your Jellyfin install
-	// to enable it as an auth provider.
-	JELLYFIN_HOST string `json:",omitempty"`
-
-	// Optional: Use Emby instead of Jellyfin branding in the ui.
-	USE_EMBY bool
-
-	// Enable/disable signup functionality.
-	// Set to `false` to disable registering an account.
-	SIGNUP_ENABLED bool
 
 	// Optional: Provide your own TMDB API Key.
 	// If unprovided, the default Watcharr API key will be used.
@@ -76,22 +51,12 @@ type ServerConfig struct {
 	// precedence over this.
 	TMDB_IMAGE_BASE string `json:",omitempty"`
 
-	// Optional: Point to Plex install to enable plex features.
-	PLEX_HOST string `json:",omitempty"`
+	// Optional: IPs/CIDRs of reverse proxies in front of Watcharr. Only
+	// these are trusted to set X-Forwarded-For, which is used as the client
+	// ip for rate limiting. When empty, the direct connection ip is used.
+	TRUSTED_PROXIES []string `json:",omitempty"`
 
-	// Optional: Machine identifier of your Plex server.
-	// This is used to ensure only users of your Plex server
-	// can use this Watcharr instance.
-	// Will be fetched automatically when PLEX_HOST is provided via web ui.
-	PLEX_MACHINE_ID string `json:",omitempty"`
-
-	// Optional: Trusted header authentication configuration.
-	// VERY DANGEROUS if access is not controlled correctly!
-	HEADER_AUTH TrustedHeaderAuthSetting `json:",omitempty"`
-
-	SONARR []cfgmodel.SonarrSettings `json:",omitempty"`
-	RADARR []cfgmodel.RadarrSettings `json:",omitempty"`
-	TWITCH igdb.IGDB                 `json:",omitzero"`
+	TWITCH igdb.IGDB `json:",omitzero"`
 
 	// Optional: Schedule for tasks.
 	TASK_SCHEDULE map[string]int `json:",omitempty"`
@@ -111,16 +76,9 @@ type ServerConfig struct {
 // not editable on frontend, so not needed).
 func (c *ServerConfig) GetSafe() ServerConfig {
 	return ServerConfig{
-		SIGNUP_ENABLED:  c.SIGNUP_ENABLED,
 		DEFAULT_COUNTRY: c.DEFAULT_COUNTRY,
-		JELLYFIN_HOST:   c.JELLYFIN_HOST,
-		USE_EMBY:        c.USE_EMBY,
 		TMDB_KEY:        c.TMDB_KEY,
-		PLEX_HOST:       c.PLEX_HOST,
-		PLEX_MACHINE_ID: c.PLEX_MACHINE_ID,
 		DEBUG:           c.DEBUG,
-		SONARR:          c.SONARR, // Dont act safe, this contains sonarr api key, needed for config
-		RADARR:          c.RADARR, // Dont act safe, this contains radarr api key, needed for config
 		TWITCH: igdb.IGDB{
 			ClientID:     c.TWITCH.ClientID,
 			ClientSecret: c.TWITCH.ClientSecret,
@@ -155,20 +113,8 @@ func (c *ServerConfig) Get(s string) (ServerConfigGetByName, error) {
 	switch s {
 	case "DEFAULT_COUNTRY":
 		return ServerConfigGetByName{Value: c.DEFAULT_COUNTRY}, nil
-	case "JELLYFIN_HOST":
-		return ServerConfigGetByName{Value: c.JELLYFIN_HOST}, nil
-	case "USE_EMBY":
-		return ServerConfigGetByName{Value: c.USE_EMBY}, nil
-	case "SIGNUP_ENABLED":
-		return ServerConfigGetByName{Value: c.SIGNUP_ENABLED}, nil
 	case "TMDB_KEY":
 		return ServerConfigGetByName{Value: c.TMDB_KEY}, nil
-	case "PLEX_HOST":
-		return ServerConfigGetByName{Value: c.PLEX_HOST}, nil
-	case "PLEX_MACHINE_ID":
-		return ServerConfigGetByName{Value: c.PLEX_MACHINE_ID}, nil
-	case "HEADER_AUTH":
-		return ServerConfigGetByName{Value: c.HEADER_AUTH}, nil
 	case "DEBUG":
 		return ServerConfigGetByName{Value: c.DEBUG}, nil
 	}
@@ -181,20 +127,27 @@ func (c *ServerConfig) UpdateConfig(k string, v any) error {
 	if v == nil {
 		return errors.New("invalid value")
 	}
-	if k == "JELLYFIN_HOST" {
-		c.JELLYFIN_HOST = v.(string)
-	} else if k == "USE_EMBY" {
-		c.USE_EMBY = v.(bool)
-	} else if k == "SIGNUP_ENABLED" {
-		c.SIGNUP_ENABLED = v.(bool)
-	} else if k == "TMDB_KEY" {
-		c.TMDB_KEY = v.(string)
-	} else if k == "DEBUG" {
-		c.DEBUG = v.(bool)
+	switch k {
+	case "TMDB_KEY":
+		s, ok := v.(string)
+		if !ok {
+			return errors.New("invalid value")
+		}
+		c.TMDB_KEY = s
+	case "DEBUG":
+		b, ok := v.(bool)
+		if !ok {
+			return errors.New("invalid value")
+		}
+		c.DEBUG = b
 		logging.SetLevel(c.DEBUG)
-	} else if k == "DEFAULT_COUNTRY" {
-		c.DEFAULT_COUNTRY = v.(string)
-	} else {
+	case "DEFAULT_COUNTRY":
+		s, ok := v.(string)
+		if !ok {
+			return errors.New("invalid value")
+		}
+		c.DEFAULT_COUNTRY = s
+	default:
 		return errors.New("invalid setting")
 	}
 	err := c.Write()
@@ -263,6 +216,7 @@ func read() (*ServerConfig, error) {
 	defer cfgFile.Close()
 
 	c := new(ServerConfig)
+	// Unknown (e.g. removed) keys are ignored.
 	dec := json.NewDecoder(cfgFile)
 	if err = dec.Decode(c); err != nil {
 		return nil, err
@@ -291,7 +245,6 @@ func generateConfig() (*ServerConfig, error) {
 		JWT_SECRET: key,
 		// Other defaults..
 		DEFAULT_COUNTRY: "US",
-		SIGNUP_ENABLED:  true,
 	}
 	barej, err := json.MarshalIndent(cfg, "", "\t")
 	if err != nil {

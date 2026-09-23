@@ -626,6 +626,9 @@ func (s *Service) updateWatched(
 	if ar.Pinned != nil {
 		upwat.Pinned = *ar.Pinned
 	}
+	if ar.Hidden != nil {
+		upwat.Hidden = *ar.Hidden
+	}
 	res = s.db.Save(upwat)
 	if res.RowsAffected <= 0 {
 		return domain.WatchedUpdateResponse{}, errors.New("no watched entry found")

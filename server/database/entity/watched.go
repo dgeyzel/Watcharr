@@ -30,9 +30,11 @@ type Watched struct {
 	// float so we can support decimal ratings.
 	// Ratings should still always be saved as out of 10.0,
 	// so they can be viewed with any ratings setting in the client.
-	Rating          float64          `json:"rating" gorm:"type:numeric(2,1)"`
-	Thoughts        string           `json:"thoughts"`
-	Pinned          bool             `json:"pinned" gorm:"default:false;not null"`
+	Rating   float64 `json:"rating" gorm:"type:numeric(2,1)"`
+	Thoughts string  `json:"thoughts"`
+	Pinned   bool    `json:"pinned" gorm:"default:false;not null"`
+	// Hidden entries are drafts, only the admin can see them (never public).
+	Hidden          bool             `json:"hidden" gorm:"default:false;not null"`
 	UserID          uint             `json:"-" gorm:"uniqueIndex:usernctnidx;uniqueIndex:userngamidx"`
 	ContentID       *int             `json:"-" gorm:"uniqueIndex:usernctnidx"`
 	Content         *Content         `json:"content,omitempty"`

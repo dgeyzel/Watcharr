@@ -75,6 +75,7 @@ type WatchedDto struct {
 	Status    entity.WatchedStatus `json:"status"`
 	Rating    float64              `json:"rating"`
 	Pinned    bool                 `json:"pinned"`
+	Hidden    bool                 `json:"hidden"`
 
 	// Properties that may not be included in all watched dtos
 	// (depending on where we are making the dto for)
@@ -103,6 +104,7 @@ func NewWatchedDtoWithBaseProps(w *entity.Watched) WatchedDto {
 		Status:    w.Status,
 		Rating:    w.Rating,
 		Pinned:    w.Pinned,
+		Hidden:    w.Hidden,
 	}
 }
 
@@ -200,6 +202,8 @@ type WatchedUpdateRequest struct {
 	Thoughts       string               `json:"thoughts" `
 	RemoveThoughts bool                 `json:"removeThoughts"`
 	Pinned         *bool                `json:"pinned" `
+	// Hide from (or show to) visitors.
+	Hidden *bool `json:"hidden"`
 	// Allow the added activity count as play?
 	// If the activity was going to count, this can stop it.
 	LetCountAsPlay *bool `json:"letCountAsPlay"`
@@ -213,6 +217,7 @@ func (w WatchedUpdateRequest) Valid() error {
 		w.Rating == 0 &&
 		(w.Thoughts == "" && !w.RemoveThoughts) &&
 		w.Pinned == nil &&
+		w.Hidden == nil &&
 		w.LetCountAsPlay == nil {
 		// No properties are set, so this struct is not valid.
 		return errors.New("no properties provided")

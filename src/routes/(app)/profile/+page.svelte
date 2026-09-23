@@ -9,11 +9,10 @@
 	import { req, updateUserSetting } from "@/lib/util/api";
 	import { getOrdinalSuffix, monthsShort } from "@/lib/util/helpers";
 	import { store } from "@/store.svelte";
-	import { UserType, type Image, type Profile } from "@/types";
+	import { type Image, type Profile } from "@/types";
 	import { notify } from "@/lib/util/notify";
 	import UserAvatar from "@/lib/img/UserAvatar.svelte";
 	import PwChangeModal from "@/routes/(app)/profile/modals/PwChangeModal.svelte";
-	import SyncModal from "./modals/SyncModal.svelte";
 	import RegionDropDown from "@/lib/RegionDropDown.svelte";
 	import RatingSetting from "@/lib/rating/RatingSetting.svelte";
 	import { toggleTheme } from "@/lib/util/theme";
@@ -34,8 +33,6 @@
 	let automateShowStatusesDisabled = $state(false);
 	let pwChangeModalOpen = $state(false);
 	let getProfilePromise = $state(getProfile());
-	let jellyfinSyncModalOpen = $state(false);
-	let plexSyncModalOpen = $state(false);
 
 	async function getProfile() {
 		return await req.get<Profile>(`/profile`);
@@ -312,23 +309,11 @@
 			<div class="row btns">
 				<button onclick={() => goto(resolve("/import"))}>Import</button>
 				<button onclick={() => (exportModalOpen = true)}>Export</button>
-				{#if user?.type !== UserType.Plex && user?.type !== UserType.Jellyfin}
-					<button
-						onclick={() => {
-							pwChangeModalOpen = true;
-						}}>Change Password</button
-					>
-				{/if}
-				{#if user?.type === UserType?.Jellyfin}
-					<button onclick={() => (jellyfinSyncModalOpen = true)}>
-						Sync With {localStorage.getItem("useEmby") ? "Emby" : "Jellyfin"}
-					</button>
-				{/if}
-				{#if user?.type === UserType?.Plex}
-					<button onclick={() => (plexSyncModalOpen = true)}>
-						Sync With Plex
-					</button>
-				{/if}
+				<button
+					onclick={() => {
+						pwChangeModalOpen = true;
+					}}>Change Password</button
+				>
 			</div>
 			{#if exportModalOpen}
 				<ExportListModal
@@ -344,12 +329,6 @@
 						pwChangeModalOpen = false;
 					}}
 				></PwChangeModal>
-			{/if}
-			{#if jellyfinSyncModalOpen}
-				<SyncModal onClose={() => (jellyfinSyncModalOpen = false)} />
-			{/if}
-			{#if plexSyncModalOpen}
-				<SyncModal type="plex" onClose={() => (plexSyncModalOpen = false)} />
 			{/if}
 		</div>
 	</div>

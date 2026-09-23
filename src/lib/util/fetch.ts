@@ -225,7 +225,7 @@ export class Reqer {
 				const token = localStorage.getItem("token");
 				if (!token) {
 					console.error("No token, going to login.");
-					goto(resolve("/login?again=1"));
+					goto(resolve("/admin?again=1"));
 					throw new ReqerError("No auth token found");
 				}
 				headers.append("Authorization", token);
@@ -261,7 +261,7 @@ export class Reqer {
 					console.error("Recieved 401 response, going to login.");
 					notify({ text: "Request Authorization Failed!", type: "error" });
 					clearWatcharrData();
-					goto(resolve("/login?again=1"));
+					goto(resolve("/admin?again=1"));
 				}
 				throw err;
 			} else if (err instanceof Error) {

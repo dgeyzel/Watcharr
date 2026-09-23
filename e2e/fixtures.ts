@@ -32,7 +32,7 @@ export const test = base.extend({
 export { expect };
 
 export async function loginAsAdmin(page: import("@playwright/test").Page) {
-	await page.goto("/login");
+	await page.goto("/admin");
 	await page.getByPlaceholder("Username").fill(ADMIN.username);
 	await page.getByPlaceholder("Password").fill(ADMIN.password);
 	await page.locator('button[type="submit"]').first().click();

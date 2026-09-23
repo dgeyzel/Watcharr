@@ -10,7 +10,6 @@
 	import SimilarContent from "@/lib/content/SimilarContent.svelte";
 	import Title from "@/lib/content/Title.svelte";
 	import {
-		contentExistsOnJellyfin,
 		req,
 		updateWatched,
 		type UpdateWatchedOptions,
@@ -23,9 +22,7 @@
 		TMDBContentCreditsCrew,
 		WatchedStatus,
 	} from "@/types";
-	import RequestShow from "@/lib/request/RequestShow.svelte";
 	import FollowedThoughts from "@/lib/content/FollowedThoughts.svelte";
-	import ArrRequestButton from "@/lib/request/ArrRequestButton.svelte";
 	import tooltip from "@/lib/actions/tooltip.js";
 	import AddToTagButton from "@/lib/tag/AddToTagButton.svelte";
 	import PageBackdrop from "@/lib/generic/PageBackdrop.svelte";
@@ -43,9 +40,6 @@
 
 	let { data } = $props();
 
-	let requestModalShown = $state(false);
-	let jellyfinUrl: string | undefined = $state();
-	let arrRequestButtonComp: ArrRequestButton | undefined = $state();
 	let show: Media | undefined = $state();
 	let pageError: unknown | undefined = $state();
 	let countAsPlayModalSignal: Signal<boolean> | undefined = $state();
@@ -62,15 +56,6 @@
 					params: { region: store.userSettings?.country },
 				});
 				if (resp) {
-					if (resp.name && resp.ids.tmdb) {
-						contentExistsOnJellyfin("tv", resp.name, resp.ids.tmdb).then(
-							(j) => {
-								if (j?.hasContent && j?.url !== "") {
-									jellyfinUrl = j.url;
-								}
-							},
-						);
-					}
 					show = resp;
 				} else {
 					show = undefined;
@@ -186,29 +171,6 @@
 
 						<div class="btns">
 							<ViewTrailerButton videos={show.videos} />
-							{#if jellyfinUrl}
-								<a
-									class="btn"
-									href={jellyfinUrl}
-									rel="external"
-									target="_blank"
-								>
-									{#if localStorage.getItem("useEmby")}
-										<Icon i="emby" wh={14} />Play On Emby
-									{:else}
-										<Icon i="jellyfin" wh={14} />Play On Jellyfin
-									{/if}
-								</a>
-							{/if}
-							{#if store.serverFeatures?.sonarr && data.tvId}
-								<ArrRequestButton
-									type="tv"
-									tmdbId={data.tvId}
-									openRequestModal={() =>
-										(requestModalShown = !requestModalShown)}
-									bind:this={arrRequestButtonComp}
-								/>
-							{/if}
 							{#if show.watched}
 								<div class="other-side">
 									<AddToTagButton watchedItem={show.watched} />
@@ -264,18 +226,6 @@
 
 		{#if countAsPlayModalSignal}
 			<CountAsPlayModal onDecision={countAsPlayModalSignal} />
-		{/if}
-
-		{#if requestModalShown}
-			<RequestShow
-				content={show}
-				onClose={(reqResp) => {
-					requestModalShown = false;
-					if (reqResp) {
-						arrRequestButtonComp?.setExistingRequest(reqResp);
-					}
-				}}
-			/>
 		{/if}
 
 		<div class="page">

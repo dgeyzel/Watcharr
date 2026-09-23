@@ -2,8 +2,7 @@
 	import { store } from "@/store.svelte";
 	import Menu from "../Menu.svelte";
 	import { parseTokenPayload, userHasPermission } from "../util/helpers";
-	import { UserPermission, UserType } from "@/types";
-	import ProxyUserLogoutModal from "../logout/ProxyUserLogoutModal.svelte";
+	import { UserPermission } from "@/types";
 	import { goto } from "$app/navigation";
 	import { clearWatcharrData } from "../logout";
 	import { notify } from "../util/notify";
@@ -11,17 +10,11 @@
 	import { resolve } from "$app/paths";
 
 	let user = $derived(store.userInfo);
-	let proxyUserLogoutShown = $state(false);
 	let aboutModalOpen = $state(false);
 
 	function logout() {
-		if (user?.type === UserType.Proxy) {
-			// Proxy users logout flow is different.
-			proxyUserLogoutShown = true;
-			return;
-		}
 		clearWatcharrData();
-		goto(resolve("/login"));
+		goto(resolve("/"));
 	}
 
 	function profile() {
@@ -34,10 +27,6 @@
 
 	function userManagement() {
 		goto(resolve("/manage_users"));
-	}
-
-	function requestManagement() {
-		goto(resolve("/arr_requests"));
 	}
 
 	function shareWatchedList() {
@@ -81,17 +70,8 @@
 	{#if user && userHasPermission(user.permissions, UserPermission.PERM_ADMIN)}
 		<button class="plain" onclick={() => serverSettings()}>Settings</button>
 		<button class="plain" onclick={() => userManagement()}>Users</button>
-		{#if store.serverFeatures?.sonarr || store.serverFeatures?.radarr}
-			<!-- At least one (sonarr/radarr) should be enabled for requests menu item to display. -->
-			<button class="plain" onclick={() => requestManagement()}>
-				Requests
-			</button>
-		{/if}
 	{/if}
 	<button class="plain" onclick={() => logout()}>Logout</button>
-	{#if proxyUserLogoutShown}
-		<ProxyUserLogoutModal onClose={() => (proxyUserLogoutShown = false)} />
-	{/if}
 	<span>
 		<button
 			class="menu-footer"

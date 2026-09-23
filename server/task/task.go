@@ -8,7 +8,6 @@ import (
 	"github.com/go-co-op/gocron/v2"
 	"github.com/sbondCo/Watcharr/config"
 	"github.com/sbondCo/Watcharr/database"
-	"github.com/sbondCo/Watcharr/feature/arr"
 	"github.com/sbondCo/Watcharr/image"
 	"github.com/sbondCo/Watcharr/token"
 	"gorm.io/gorm"
@@ -60,12 +59,6 @@ func SetupTasks(cfg *config.ServerConfig, db *gorm.DB) {
 		"Cleanup Tokens": {
 			f: func() {
 				token.CleanupTokens(db)
-			},
-			dd: 60 * time.Second,
-		},
-		"Refresh Arr Queues": {
-			f: func() {
-				arr.RefreshArrQueues(cfg)
 			},
 			dd: 60 * time.Second,
 		},

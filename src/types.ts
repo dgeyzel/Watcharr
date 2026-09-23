@@ -288,17 +288,8 @@ export interface Image {
 	path: string;
 }
 
-export interface JellyfinFoundContent {
-	hasContent: boolean;
-	url: string;
-}
-
 export interface AvailableAuthProviders {
-	available: string[];
-	signupEnabled: boolean;
 	isInSetup: boolean;
-	useEmby: boolean;
-	headerAuthAutoLogin: boolean;
 }
 
 export interface TokenClaims {
@@ -595,14 +586,7 @@ export interface ManagedUser {
 
 export interface ServerConfig {
 	DEFAULT_COUNTRY?: string;
-	JELLYFIN_HOST?: string;
-	USE_EMBY: boolean;
-	SIGNUP_ENABLED: boolean;
 	TMDB_KEY?: string;
-	PLEX_HOST?: string;
-	PLEX_MACHINE_ID?: string;
-	SONARR?: SonarrSettings[];
-	RADARR?: RadarrSettings[];
 	TWITCH?: TwitchSettings;
 	DEBUG: boolean;
 }
@@ -611,53 +595,9 @@ export interface ServerConfigByName<T> {
 	value: T;
 }
 
-export interface SonarrSettings {
-	name: string;
-	host?: string;
-	key?: string;
-	qualityProfile?: number;
-	rootFolder?: number;
-	languageProfile?: number;
-	automaticSearch?: boolean;
-}
-
-export interface RadarrSettings {
-	name: string;
-	host?: string;
-	key?: string;
-	qualityProfile?: number;
-	rootFolder?: number;
-	automaticSearch?: boolean;
-}
-
-interface ArrSettingsPublicResponseBase {
-	name: string;
-	host?: string;
-	qualityProfile?: number;
-	rootFolder?: number;
-	automaticSearch: boolean;
-}
-
-export interface SonarrSettingsPublicResponseResult extends ArrSettingsPublicResponseBase {
-	languageProfile?: number;
-}
-
-export interface RadarrSettingsPublicResponseResult extends ArrSettingsPublicResponseBase {}
-
 export interface TwitchSettings {
 	clientId?: string;
 	clientSecret?: string;
-}
-
-export interface TrustedHeaderAuthSetting {
-	enabled: boolean;
-	headerName: string;
-	autoLogin: boolean;
-	logoutUrl: string;
-}
-
-export interface TrustedHeaderAuthLogoutDetailsResponse {
-	logoutUrl?: string;
 }
 
 export interface DropDownItem {
@@ -672,93 +612,7 @@ export interface ListBoxItem {
 	displayValue: string;
 }
 
-export interface QualityProfile {
-	name: string;
-	upgradeAllowed: boolean;
-	cutoff: number;
-	items: {
-		quality?: {
-			id: number;
-			name: string;
-			source: string;
-			resolution: number;
-		};
-		items: unknown[];
-		allowed: boolean;
-		name?: string;
-		id?: number;
-	}[];
-	id: number;
-}
-
-export interface RootFolder {
-	path: string;
-	accessible: boolean;
-	freeSpace: number;
-	unmappedFolders: unknown[];
-	id: number;
-}
-
-export interface LanguageProfile {
-	name: string;
-	upgradeAllowed: boolean;
-	cutoff: {
-		id: number;
-		name: string;
-	};
-	languages: {
-		language: {
-			id: number;
-			name: string;
-		};
-		allowed: boolean;
-	}[];
-	id: number;
-}
-
-export interface SonarrTestResponse {
-	qualityProfiles: QualityProfile[];
-	rootFolders: RootFolder[];
-	languageProfiles: LanguageProfile[];
-}
-
-export interface RadarrTestResponse {
-	qualityProfiles: QualityProfile[];
-	rootFolders: RootFolder[];
-}
-
-export type ArrRequestStatus =
-	"PENDING" | "APPROVED" | "AUTO_APPROVED" | "DENIED" | "FOUND";
-
-export interface ArrRequestResponse {
-	id: number;
-	createdAt: string;
-	updatedAt: string;
-	serverName: string;
-	arrId: number;
-	content: Content;
-	status: ArrRequestStatus;
-	requestJson: string;
-	username: string;
-}
-
-export interface ArrDetailsResponse {
-	progress: number;
-	estimatedCompletionTime: string;
-	status: string;
-	trackedDownloadStatus: string;
-	trackedDownloadState: string;
-}
-
-export interface ArrInfoResponse {
-	hasFile: boolean;
-	isAvailable: boolean;
-	added: string;
-}
-
 export interface ServerFeatures {
-	sonarr: boolean;
-	radarr: boolean;
 	games: boolean;
 }
 

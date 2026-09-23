@@ -20,63 +20,72 @@ import (
 // from now on and potentially remove `db` from this func in the future.
 func AuthRequired(db *gorm.DB, cfg *config.ServerConfig) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		slog.Debug("AuthRequired middleware hit")
-		atoken := c.GetHeader("Authorization")
-		// Make sure auth header isn't empty
-		if atoken == "" {
-			slog.Warn("Returning 401, Authorization header not provided")
+		if !Authenticate(c, db, cfg) {
 			c.AbortWithStatus(401)
 			return
 		}
-		// Parse token
-		token, err := jwt.ParseWithClaims(atoken, &entity.TokenClaims{}, func(token *jwt.Token) (interface{}, error) {
-			return []byte(cfg.JWT_SECRET), nil
-		})
-		if err != nil {
-			slog.Error("AuthRequired failed to parse token", "error", err)
-			c.AbortWithStatus(401)
-			return
+		c.Next()
+	}
+}
+
+// Authenticate validates the request's token and sets the user's details
+// (userId, userType and, if db is passed, username, userPermissions and
+// userCountry) on the context. It does not abort or call the next handler,
+// callers decide what to do when it returns false.
+func Authenticate(c *gin.Context, db *gorm.DB, cfg *config.ServerConfig) bool {
+	slog.Debug("Authenticate hit")
+	atoken := c.GetHeader("Authorization")
+	// Make sure auth header isn't empty
+	if atoken == "" {
+		slog.Debug("Authenticate: Authorization header not provided")
+		return false
+	}
+	// Parse token, only accepting the HMAC method we sign with.
+	token, err := jwt.ParseWithClaims(atoken, &entity.TokenClaims{}, func(token *jwt.Token) (interface{}, error) {
+		return []byte(cfg.JWT_SECRET), nil
+	}, jwt.WithValidMethods([]string{jwt.SigningMethodHS256.Alg()}))
+	if err != nil {
+		slog.Error("Authenticate failed to parse token", "error", err)
+		return false
+	}
+	claims, ok := token.Claims.(*entity.TokenClaims)
+	if !ok || !token.Valid {
+		slog.Error("Token is **not** valid")
+		return false
+	}
+	// Check if token issuedAt is from before `timeOfNewLoginRequired`.
+	// Basically just so we can logout old tokens and force relogin...
+	// since new changes require the user login again.
+	timeOfNewLoginRequired, _ := time.Parse(time.RFC822, "18 Aug 23 20:30 UTC")
+	if claims.IssuedAt == nil || claims.IssuedAt.Before(timeOfNewLoginRequired) {
+		slog.Info("Token is from before timeOfNewLoginRequired.. returning 401", "token_issued_at", claims.IssuedAt, "time_of_new_login_required", timeOfNewLoginRequired)
+		return false
+	}
+	slog.Debug("Token is valid", "claims", claims)
+	c.Set("userId", claims.UserID)
+	c.Set("userType", claims.Type)
+	// If db passed, get extra user info and set as variables in req context
+	if db != nil {
+		slog.Debug("Authenticate: db passed.. getting extra user info")
+		dbUser := new(entity.User)
+		res := db.Where("id = ?", claims.UserID).Take(&dbUser)
+		if res.Error != nil {
+			slog.Error("Authenticate: Failed to select user from database", "error", res.Error)
+			return false
 		}
-		// If token is valid, go to next handler
-		if claims, ok := token.Claims.(*entity.TokenClaims); ok && token.Valid {
-			// Check if token issuedAt is from before `timeOfNewLoginRequired`.
-			// Basically just so we can logout old tokens and force relogin...
-			// since new changes require the user login again.
-			timeOfNewLoginRequired, _ := time.Parse(time.RFC822, "18 Aug 23 20:30 UTC")
-			if claims.IssuedAt.Before(timeOfNewLoginRequired) {
-				slog.Info("Token is from before timeOfNewLoginRequired.. returning 401", "token_issued_at", claims.IssuedAt, "time_of_new_login_required", timeOfNewLoginRequired)
-				c.AbortWithStatus(401)
-				return
-			}
-			slog.Debug("Token is valid", "claims", claims)
-			c.Set("userId", claims.UserID)
-			c.Set("userType", claims.Type)
-			// If db passed, get extra user info and set as variables in req context
-			if db != nil {
-				slog.Debug("AuthRequired: db passed.. getting extra user info")
-				dbUser := new(entity.User)
-				res := db.Where("id = ?", claims.UserID).Take(&dbUser)
-				if res.Error != nil {
-					slog.Error("AuthRequired: Failed to select user from database", "error", res.Error)
-					c.AbortWithStatus(401)
-					return
-				}
-				slog.Debug("AuthRequired: fetched extra user info. Setting vars.", "userThirdPartyId", dbUser.ThirdPartyID, "userThirdPartyAuth", "lol this is censored dude")
-				c.Set("userThirdPartyId", dbUser.ThirdPartyID)
-				c.Set("userThirdPartyAuth", dbUser.ThirdPartyAuth)
-				c.Set("username", dbUser.Username)
-				c.Set("userPermissions", dbUser.Permissions)
-				if dbUser.Country != nil {
-					c.Set("userCountry", *dbUser.Country)
-				}
-			}
-			c.Next()
-		} else {
-			slog.Error("Token is **not** valid")
-			c.AbortWithStatus(401)
-			return
+		c.Set("username", dbUser.Username)
+		c.Set("userPermissions", dbUser.Permissions)
+		if dbUser.Country != nil {
+			c.Set("userCountry", *dbUser.Country)
 		}
 	}
+	return true
+}
+
+// IsAdmin reports if the user set on the context by Authenticate (with db)
+// has admin permissions.
+func IsAdmin(c *gin.Context) bool {
+	return permission.Has(c.GetInt("userPermissions"), entity.PERM_ADMIN)
 }
 
 // Admin only middleware (use after AuthRequired with extra info!)

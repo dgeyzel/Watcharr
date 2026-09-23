@@ -2,7 +2,7 @@
 	import PersonPoster from "@/lib/poster/PersonPoster.svelte";
 	import Spinner from "@/lib/Spinner.svelte";
 	import HorizontalList from "@/lib/HorizontalList.svelte";
-	import { contentExistsOnJellyfin, req, updateWatched } from "@/lib/util/api";
+	import { req, updateWatched } from "@/lib/util/api";
 	import { store } from "@/store.svelte";
 	import type {
 		Media,
@@ -16,10 +16,8 @@
 	import ProvidersList from "@/lib/content/ProvidersList.svelte";
 	import Icon from "@/lib/Icon.svelte";
 	import SimilarContent from "@/lib/content/SimilarContent.svelte";
-	import RequestMovie from "@/lib/request/RequestMovie.svelte";
 	import Error from "@/lib/Error.svelte";
 	import FollowedThoughts from "@/lib/content/FollowedThoughts.svelte";
-	import ArrRequestButton from "@/lib/request/ArrRequestButton.svelte";
 	import tooltip from "@/lib/actions/tooltip.js";
 	import AddToTagButton from "@/lib/tag/AddToTagButton.svelte";
 	import PageBackdrop from "@/lib/generic/PageBackdrop.svelte";
@@ -34,9 +32,6 @@
 
 	let { data } = $props();
 
-	let requestModalShown = $state(false);
-	let jellyfinUrl: string | undefined = $state();
-	let arrRequestButtonComp: ArrRequestButton | undefined = $state();
 	let movie: Media | undefined = $state();
 	let pageError: unknown | undefined = $state();
 
@@ -52,15 +47,6 @@
 					params: { region: store.userSettings?.country },
 				});
 				if (resp) {
-					if (resp.name && resp.ids.tmdb) {
-						contentExistsOnJellyfin("movie", resp.name, resp.ids.tmdb).then(
-							(j) => {
-								if (j?.hasContent && j?.url !== "") {
-									jellyfinUrl = j.url;
-								}
-							},
-						);
-					}
 					movie = resp;
 				} else {
 					movie = undefined;
@@ -158,29 +144,6 @@
 
 						<div class="btns">
 							<ViewTrailerButton videos={movie.videos} />
-							{#if jellyfinUrl}
-								<a
-									class="btn"
-									href={jellyfinUrl}
-									rel="external"
-									target="_blank"
-								>
-									{#if localStorage.getItem("useEmby")}
-										<Icon i="emby" wh={14} />Play On Emby
-									{:else}
-										<Icon i="jellyfin" wh={14} />Play On Jellyfin
-									{/if}
-								</a>
-							{/if}
-							{#if store.serverFeatures?.radarr && data.movieId}
-								<ArrRequestButton
-									type="movie"
-									tmdbId={data.movieId}
-									openRequestModal={() =>
-										(requestModalShown = !requestModalShown)}
-									bind:this={arrRequestButtonComp}
-								/>
-							{/if}
 							{#if movie.watched}
 								<div class="other-side">
 									<AddToTagButton watchedItem={movie.watched} />
@@ -233,18 +196,6 @@
 				}}
 			/>
 		</div>
-
-		{#if requestModalShown}
-			<RequestMovie
-				content={movie}
-				onClose={(reqResp) => {
-					requestModalShown = false;
-					if (reqResp) {
-						arrRequestButtonComp?.setExistingRequest(reqResp);
-					}
-				}}
-			/>
-		{/if}
 
 		<div class="page">
 			{#if data.movieId}

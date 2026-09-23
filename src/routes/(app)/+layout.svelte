@@ -43,7 +43,7 @@
 
 	function handleProfileClick() {
 		if (!localStorage.getItem("token")) {
-			goto(resolve("/login"));
+			goto(resolve("/admin"));
 		} else {
 			closeAllSubMenus("sub");
 			subMenuShown = !subMenuShown;
@@ -112,7 +112,7 @@
 	async function getInitialData() {
 		if (!localStorage.getItem("token")) {
 			console.warn("getInitialData: No token found, redirecting to login!");
-			goto(resolve("/login?again=1"));
+			goto(resolve("/admin?again=1"));
 			return;
 		}
 		const [u, s, f, fo, ts] = await Promise.all([

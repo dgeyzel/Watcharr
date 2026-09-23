@@ -680,7 +680,7 @@
 
 	onMount(() => {
 		if (!localStorage.getItem("token")) {
-			goto(resolve("/login"));
+			goto(resolve("/admin"));
 		}
 	});
 </script>

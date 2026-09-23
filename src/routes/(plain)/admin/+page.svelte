@@ -1,14 +1,12 @@
 <script lang="ts">
 	import { goto } from "$app/navigation";
-	import type { AuthResponse, AvailableAuthProviders } from "@/types";
+	import { page } from "$app/state";
+	import { type AuthResponse, type AvailableAuthProviders } from "@/types";
+	import { noAuthReq } from "@/lib/util/api";
 	import { onMount } from "svelte";
 	import { notify, unNotify } from "@/lib/util/notify";
-	import { noAuthReq } from "@/lib/util/api";
 	import { ReqerError } from "@/lib/util/fetch";
 	import { resolve } from "$app/paths";
-
-	// Must match MinPasswordLength on the server.
-	const MIN_PASSWORD_LENGTH = 12;
 
 	let error: string | undefined = $state();
 
@@ -17,14 +15,21 @@
 			goto(resolve("/"));
 		}
 
-		noAuthReq.get<AvailableAuthProviders>("/auth/available").then((r) => {
-			if (r) {
-				if (!r.isInSetup) {
-					console.log("Server not in setup.. navigating to login page.");
-					goto(resolve("/admin"));
+		if (!error && page.url.searchParams.get("again")) {
+			error = "Please Login Again";
+		}
+
+		noAuthReq
+			.get<AvailableAuthProviders>("/auth/available")
+			.then((r) => {
+				if (r?.isInSetup) {
+					console.log("Server is in setup.. navigating to web setup page.");
+					goto(resolve("/setup"));
 				}
-			}
-		});
+			})
+			.catch((err) => {
+				console.error("Failed to check if server is in setup", err);
+			});
 	});
 
 	function handleLogin(ev: SubmitEvent) {
@@ -32,26 +37,20 @@
 		const fd = new FormData(ev.target! as HTMLFormElement);
 		const user = fd.get("username");
 		const pass = fd.get("password");
-		const setupToken = fd.get("setupToken");
 
-		if (!user || !pass || !setupToken) {
-			error = "Username, Password and Setup Token fields are required";
-			return;
-		}
-		if (String(pass).length < MIN_PASSWORD_LENGTH) {
-			error = `Password must be at least ${MIN_PASSWORD_LENGTH} characters`;
+		if (!user || !pass) {
+			error = "Username and Password fields are required";
 			return;
 		}
 
-		const nid = notify({ text: "Setting Up Admin User", type: "loading" });
+		const nid = notify({ text: "Logging in", type: "loading" });
 		noAuthReq
-			.post<AuthResponse>("/setup/create_admin", {
+			.post<AuthResponse>("/auth/", {
 				username: user,
 				password: pass,
-				setupToken: String(setupToken).trim(),
 			})
 			.then((resp) => {
-				if (resp.token) {
+				if (resp?.token) {
 					console.log("Received token... logging in.");
 					localStorage.setItem("token", resp.token);
 					goto(resolve("/"));
@@ -59,40 +58,25 @@
 				}
 			})
 			.catch((err) => {
-				error = ReqerError.getMsg(err, "Setting up user failed");
+				error = ReqerError.getMsg(err, "Login failed");
 				unNotify(nid);
 			});
 	}
 </script>
 
 <svelte:head>
-	<title>Setup Watcharr</title>
+	<title>Admin Login</title>
 </svelte:head>
 
 <div>
 	<div class="inner">
-		<div class="headers">
-			<h2>Setup Admin User</h2>
-			<h5 class="norm">
-				Create the admin account. The setup token is printed in the server log
-				when the server starts.
-			</h5>
-		</div>
+		<h2>Admin Login</h2>
 
 		{#if error}
 			<span class="error">{error}!</span>
 		{/if}
 
 		<form onsubmit={handleLogin}>
-			<label for="setupToken">Setup Token</label>
-			<input
-				type="text"
-				id="setupToken"
-				name="setupToken"
-				placeholder="Setup token from the server log"
-				autocomplete="off"
-			/>
-
 			<label for="username">Username</label>
 			<input type="text" id="username" name="username" placeholder="Username" />
 
@@ -101,12 +85,11 @@
 				type="password"
 				id="password"
 				name="password"
-				placeholder="Password (at least {MIN_PASSWORD_LENGTH} characters)"
-				minlength={MIN_PASSWORD_LENGTH}
+				placeholder="Password"
 			/>
 
 			<div class="login-btns">
-				<button type="submit"><span class="watcharr">W</span>Set Up</button>
+				<button type="submit"><span class="watcharr">W</span>Login</button>
 			</div>
 		</form>
 	</div>
@@ -132,14 +115,6 @@
 		font-weight: normal;
 	}
 
-	.headers {
-		display: flex;
-		flex-flow: column;
-		width: 100%;
-		gap: 0;
-		margin-bottom: 10px;
-	}
-
 	label {
 		align-self: flex-start;
 		font-weight: bold;
@@ -158,8 +133,8 @@
 
 			.watcharr {
 				font-family: "Rampart One";
-				font-size: 18px;
-				line-height: 18px;
+				font-size: 19px;
+				line-height: 19px;
 			}
 		}
 	}

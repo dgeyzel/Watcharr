@@ -2,17 +2,10 @@
 	import Checkbox from "@/lib/Checkbox.svelte";
 	import Spinner from "@/lib/Spinner.svelte";
 	import { notify } from "@/lib/util/notify";
-	import type {
-		Content,
-		RadarrSettings,
-		ServerConfig,
-		SonarrSettings,
-	} from "@/types";
-	import SonarrModal from "./modals/SonarrModal.svelte";
+	import type { Content, ServerConfig } from "@/types";
 	import SettingsList from "@/lib/settings/SettingsList.svelte";
 	import Setting from "@/lib/settings/Setting.svelte";
 	import SettingButton from "@/lib/settings/SettingButton.svelte";
-	import RadarrModal from "./modals/RadarrModal.svelte";
 	import { getServerFeatures, req } from "@/lib/util/api";
 	import Stats from "@/lib/stats/Stats.svelte";
 	import Error from "@/lib/Error.svelte";
@@ -20,28 +13,15 @@
 	import TwitchModal from "./modals/TwitchModal.svelte";
 	import RegionDropDown from "@/lib/RegionDropDown.svelte";
 	import TaskScheduleModal from "./modals/TaskScheduleModal.svelte";
-	import TrustedHeaderAuthModal from "./modals/TrustedHeaderAuthModal.svelte";
 	import { resolve } from "$app/paths";
 
 	let serverConfig: ServerConfig | undefined = $state();
-	let jellyfinOrEmby = $derived(serverConfig?.USE_EMBY ? "Emby" : "Jellyfin");
-	let sonarrModalOpen = $state(false);
-	let sonarrServerEditing: SonarrSettings | undefined = $state();
-	let sonarrModalEditing = $state(false);
-	let radarrModalOpen = $state(false);
-	let radarrServerEditing: RadarrSettings | undefined = $state();
-	let radarrModalEditing = $state(false);
 	let twitchModalOpen = $state(false);
 	let taskScheduleModalOpen = $state(false);
-	let headerSSOModalOpen = $state(false);
 	// Disabled vars for disabling inputs until api request completes
-	let signupDisabled = $state(false);
 	let debugDisabled = $state(false);
-	let jfDisabled = $state(false);
 	let tmdbkDisabled = $state(false);
-	let plexHostDisabled = $state(false);
 	let countryDisabled = $state(false);
-	let useEmbyDisabled = $state(false);
 
 	async function getServerConfig() {
 		serverConfig = await req.get<ServerConfig>(`/server/config`);
@@ -60,12 +40,8 @@
 		console.log("Updating server setting", name, "to", value);
 		const originalValue = serverConfig[name];
 		const nid = notify({ type: "loading", text: "Updating" });
-		let ep = "/server/config";
-		if (name === "PLEX_HOST") {
-			ep = "/server/config/plex_host";
-		}
 		req
-			.postWhole<object>(ep, { key: name, value: value })
+			.postWhole<object>("/server/config", { key: name, value: value })
 			.then((r) => {
 				if (r.status === 200) {
 					serverConfig![name] = value;
@@ -156,78 +132,6 @@
 							}}
 						/>
 					</Setting>
-					<Setting
-						title="{jellyfinOrEmby} Host"
-						desc="Point to your {jellyfinOrEmby} server to enable related features. Don't change server after
-        already using another."
-					>
-						<input
-							type="text"
-							placeholder="https://{jellyfinOrEmby.toLowerCase()}.example.com"
-							bind:value={serverConfig.JELLYFIN_HOST}
-							onblur={() => {
-								jfDisabled = true;
-								updateServerConfig(
-									"JELLYFIN_HOST",
-									serverConfig!.JELLYFIN_HOST,
-									() => {
-										jfDisabled = false;
-									},
-								);
-							}}
-							disabled={jfDisabled}
-						/>
-					</Setting>
-					<Setting
-						title="Use Emby"
-						desc="Do you want to pretend you're using Emby instead of Jellyfin?"
-						row
-					>
-						<Checkbox
-							name="USE_EMBY"
-							disabled={useEmbyDisabled}
-							value={serverConfig.USE_EMBY}
-							toggled={(on) => {
-								useEmbyDisabled = true;
-								updateServerConfig("USE_EMBY", on, () => {
-									useEmbyDisabled = false;
-								});
-							}}
-						/>
-					</Setting>
-					<Setting
-						title="Plex Host"
-						desc="Point to your Plex server to enable related features. Don't change server after
-        already using another."
-					>
-						<input
-							type="text"
-							placeholder="https://plex.example.com"
-							bind:value={serverConfig.PLEX_HOST}
-							onblur={() => {
-								plexHostDisabled = true;
-								updateServerConfig(
-									"PLEX_HOST",
-									serverConfig!.PLEX_HOST,
-									(rData) => {
-										plexHostDisabled = false;
-										serverConfig!.PLEX_MACHINE_ID =
-											rData &&
-											"PLEX_MACHINE_ID" in rData &&
-											rData?.PLEX_MACHINE_ID
-												? String(rData?.PLEX_MACHINE_ID)
-												: undefined;
-									},
-								);
-							}}
-							disabled={plexHostDisabled}
-						/>
-						{#if serverConfig.PLEX_MACHINE_ID}
-							<span style="font-size: 10px"
-								>Machine Id: {serverConfig.PLEX_MACHINE_ID}</span
-							>
-						{/if}
-					</Setting>
 					<Setting title="TMDB Key" desc="Provide your own TMDB API Key">
 						<input
 							type="password"
@@ -240,23 +144,6 @@
 								});
 							}}
 							disabled={tmdbkDisabled}
-						/>
-					</Setting>
-					<Setting
-						title="Signup"
-						desc="Allow signing up with Watcharr credentials."
-						row
-					>
-						<Checkbox
-							name="SIGNUP_ENABLED"
-							disabled={signupDisabled}
-							value={serverConfig.SIGNUP_ENABLED}
-							toggled={(on) => {
-								signupDisabled = true;
-								updateServerConfig("SIGNUP_ENABLED", on, () => {
-									signupDisabled = false;
-								});
-							}}
 						/>
 					</Setting>
 					<Setting title="Debug" desc="Enable debug logging." row>
@@ -285,20 +172,6 @@
 					{#if taskScheduleModalOpen}
 						<TaskScheduleModal onClose={() => (taskScheduleModalOpen = false)}
 						></TaskScheduleModal>
-					{/if}
-					<Setting>
-						<SettingButton
-							title="Trusted Header Authentication"
-							desc="Configure trusted header single sign-on."
-							icon="arrow"
-							onClick={() => {
-								headerSSOModalOpen = true;
-							}}
-						/>
-					</Setting>
-					{#if headerSSOModalOpen}
-						<TrustedHeaderAuthModal onClose={() => (headerSSOModalOpen = false)}
-						></TrustedHeaderAuthModal>
 					{/if}
 					<div>
 						<h3>Services</h3>
@@ -329,68 +202,6 @@
 						/>
 					</Setting>
 
-					<Setting title="Sonarr">
-						{#if serverConfig.SONARR && serverConfig.SONARR?.length > 0}
-							{#each serverConfig.SONARR as server (server.name)}
-								<SettingButton
-									title={server.name}
-									desc={`Configure server at ${server.host}`}
-									onClick={() => {
-										sonarrServerEditing = server;
-										sonarrModalEditing = true;
-										sonarrModalOpen = true;
-									}}
-								/>
-							{/each}
-						{/if}
-						<SettingButton
-							title="Sonarr"
-							desc="Add a Sonarr server."
-							icon="add"
-							onClick={() => {
-								let name = "Sonarr";
-								if (serverConfig?.SONARR && serverConfig.SONARR.length > 0) {
-									// if this still exists ya on yur own
-									name = `Sonarr${serverConfig!.SONARR.length + 1}`;
-								}
-								sonarrServerEditing = { name };
-								sonarrModalEditing = false;
-								sonarrModalOpen = true;
-							}}
-						/>
-					</Setting>
-
-					<Setting title="Radarr">
-						{#if serverConfig.RADARR && serverConfig.RADARR?.length > 0}
-							{#each serverConfig.RADARR as server (server.name)}
-								<SettingButton
-									title={server.name}
-									desc={`Configure server at ${server.host}`}
-									onClick={() => {
-										radarrServerEditing = server;
-										radarrModalEditing = true;
-										radarrModalOpen = true;
-									}}
-								/>
-							{/each}
-						{/if}
-						<SettingButton
-							title="Radarr"
-							desc="Add a Radarr server."
-							icon="add"
-							onClick={() => {
-								let name = "Radarr";
-								if (serverConfig?.RADARR && serverConfig.RADARR.length > 0) {
-									// if this still exists ya on yur own
-									name = `Radarr${serverConfig!.RADARR.length + 1}`;
-								}
-								radarrServerEditing = { name };
-								radarrModalEditing = false;
-								radarrModalOpen = true;
-							}}
-						/>
-					</Setting>
-
 					{#if twitchModalOpen}
 						<TwitchModal
 							cfg={serverConfig.TWITCH}
@@ -400,36 +211,6 @@
 								getServerConfig();
 								getServerFeatures();
 								twitchModalOpen = false;
-							}}
-						/>
-					{/if}
-
-					{#if sonarrModalOpen && sonarrServerEditing}
-						<SonarrModal
-							servarr={sonarrServerEditing}
-							isEditing={sonarrModalEditing}
-							onClose={() => {
-								// "temporary" solution to showing added servers
-								// and reloading data to revert modified but not saved changes.
-								getServerConfig();
-								getServerFeatures();
-								sonarrModalOpen = false;
-								sonarrServerEditing = undefined;
-							}}
-						/>
-					{/if}
-
-					{#if radarrModalOpen && radarrServerEditing}
-						<RadarrModal
-							servarr={radarrServerEditing}
-							isEditing={radarrModalEditing}
-							onClose={() => {
-								// "temporary" solution to showing added servers
-								// and reloading data to revert modified but not saved changes.
-								getServerConfig();
-								getServerFeatures();
-								radarrModalOpen = false;
-								radarrServerEditing = undefined;
 							}}
 						/>
 					{/if}

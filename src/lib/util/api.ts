@@ -1,8 +1,5 @@
 import { store } from "@/store.svelte";
 import {
-	UserType,
-	type JellyfinFoundContent,
-	type MediaType,
 	type Watched,
 	type WatchedAddRequest,
 	type WatchedStatus,
@@ -18,14 +15,13 @@ import {
 import { Reqer, ReqerError } from "./fetch";
 import { notify, unNotify } from "./notify";
 import { browser } from "$app/environment";
-import { page } from "$app/state";
 const { MODE } = import.meta.env;
 
 export const baseURL: string = ((): string => {
 	try {
 		// NOTE: Only the values returned under the if (browser) statements matter,
-		// since we only use this variable from the browser, I've left in the
-		// untested fallbacks anyways.
+		// since we only use this variable from the browser. During SSR (plain
+		// pages) nothing is requested, so a relative fallback is fine.
 		if (MODE === "development") {
 			if (browser) {
 				return `${location.protocol}//${location.hostname}:3080/api`;
@@ -36,7 +32,7 @@ export const baseURL: string = ((): string => {
 		if (browser) {
 			return `${location.origin}/api`;
 		}
-		return `${page.url.origin}/api`;
+		return "/api";
 	} catch (err) {
 		console.error("api: baseURL construction failed!", err);
 		if (browser) {
@@ -239,25 +235,6 @@ export async function removeActivity(activityId: number): Promise<boolean> {
 		notify({ id: nid, text: "Failed to Delete!", type: "error" });
 	}
 	return false;
-}
-
-export async function contentExistsOnJellyfin(
-	type: MediaType,
-	name: string,
-	tmdbId: number,
-): Promise<JellyfinFoundContent | undefined> {
-	try {
-		if (Number(store.userInfo?.type) == UserType.Jellyfin) {
-			const resp = await req.get<JellyfinFoundContent>(
-				`/jellyfin/${type}/${name}/${tmdbId}`,
-			);
-			console.log("contentExistsOnJellyfin response:", resp);
-			return resp;
-		}
-	} catch (err) {
-		console.error(err);
-		// notify({ text: "Failed To Remove!", type: "error" });
-	}
 }
 
 export function updateUserSetting<K extends keyof UserSettings>(
