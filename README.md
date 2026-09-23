@@ -28,8 +28,6 @@ Demo: [https://beta.watcharr.app/](https://beta.watcharr.app/)
 
 Most patches are tracked through [our project board](https://github.com/orgs/sbondCo/projects/9/views/3), though I am very unorganised so expect surprise updates (or don't, if you like surprises)!
 
-You can also [view a list of all current features](FEATURES.md).
-
 ### Contents
 
 - [Screenshots](#screenshots)
@@ -37,7 +35,6 @@ You can also [view a list of all current features](FEATURES.md).
 - [Community Made Tools](#community-made-tools)
 - [Getting Help](#getting-help)
 - [License](#license)
-- [Contributing](#contributing)
 
 # Screenshots
 
@@ -88,7 +85,3 @@ I'll do my best to reply!
 # License
 
 This project is licensed under the GPLv3 license. You should see the [LICENSE](LICENSE) file located in the root folder of this project for the full license text, if not, see <https://www.gnu.org/licenses/>.
-
-# Contributing
-
-Please continue to our [contributing guide](CONTRIBUTING.md).

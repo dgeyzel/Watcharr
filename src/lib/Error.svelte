@@ -16,7 +16,7 @@
 			<strong>{pretty}</strong>
 			{#if error instanceof Error && error.message}
 				<p>{error.message}</p>
-				{#if error instanceof ReqerError && error?.body?.error}
+				{#if error instanceof ReqerError && error.hasErrorInBody()}
 					<p>{error.body.error}</p>
 				{/if}
 			{:else}

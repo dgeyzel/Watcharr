@@ -1,4 +1,5 @@
 <script lang="ts">
+	import Footer from "@/lib/Footer.svelte";
 	import Notifications from "@/lib/Notifications.svelte";
 	import { onMount } from "svelte";
 	import { pwaInfo } from "virtual:pwa-info";
@@ -38,6 +39,8 @@
 <Notifications />
 
 {@render children?.()}
+
+<Footer />
 
 <style lang="scss">
 	@use "../styles/norm.scss";

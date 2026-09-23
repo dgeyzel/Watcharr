@@ -46,15 +46,12 @@
 				</a>
 			</div>
 			<h5 class="norm">
-				<!-- Linking to the file in `dev` branch would break every old version of
-				 Watcharr if the file were ever moved in the future. Using the current version
-				 as the branch should ensure this file is always accessible (but only as up to
-				 date as the current version) -->
 				<a
-					href="https://github.com/sbondCo/Watcharr/blob/v{__WATCHARR_VERSION__}/ATTRIBUTION.md"
+					href="https://github.com/dgeyzel/Watcharr#readme"
 					target="_blank"
+					rel="noopener noreferrer"
 				>
-					See our attribution file.
+					About this fork.
 				</a>
 			</h5>
 		</div>
