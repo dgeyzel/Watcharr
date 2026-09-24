@@ -20,6 +20,8 @@
 <div class="status">
 	<button
 		class={status && status !== "PLANNED" ? "not-active" : ""}
+		aria-label={toUnderstandableStatus("PLANNED")}
+		aria-pressed={status === "PLANNED"}
 		onclick={() => handleStatusClick("PLANNED")}
 		use:tooltip={{
 			text: toUnderstandableStatus("PLANNED"),
@@ -30,6 +32,8 @@
 	</button>
 	<button
 		class={status && status !== "WATCHING" ? "not-active" : ""}
+		aria-label={toUnderstandableStatus("WATCHING")}
+		aria-pressed={status === "WATCHING"}
 		onclick={() => handleStatusClick("WATCHING")}
 		use:tooltip={{
 			text: toUnderstandableStatus("WATCHING"),
@@ -40,6 +44,8 @@
 	</button>
 	<button
 		class={status && status !== "FINISHED" ? "not-active" : ""}
+		aria-label={toUnderstandableStatus("FINISHED")}
+		aria-pressed={status === "FINISHED"}
 		onclick={() => handleStatusClick("FINISHED")}
 		use:tooltip={{
 			text: toUnderstandableStatus("FINISHED"),
@@ -50,6 +56,8 @@
 	</button>
 	<button
 		class={status && status !== "HOLD" ? "not-active" : ""}
+		aria-label={toUnderstandableStatus("HOLD")}
+		aria-pressed={status === "HOLD"}
 		onclick={() => handleStatusClick("HOLD")}
 		use:tooltip={{
 			text: toUnderstandableStatus("HOLD"),
@@ -60,6 +68,8 @@
 	</button>
 	<button
 		class={status && status !== "DROPPED" ? "not-active" : ""}
+		aria-label={toUnderstandableStatus("DROPPED")}
+		aria-pressed={status === "DROPPED"}
 		onclick={() => handleStatusClick("DROPPED")}
 		use:tooltip={{
 			text: toUnderstandableStatus("DROPPED"),

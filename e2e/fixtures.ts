@@ -1,6 +1,7 @@
 import {
 	test as base,
 	expect,
+	type APIRequestContext,
 	type Browser,
 	type Page,
 } from "@playwright/test";
@@ -94,4 +95,38 @@ export async function asAdmin(page: Page, token: string, path = "/") {
 	await page.evaluate((t) => localStorage.setItem("token", t), token);
 	await page.goto(path);
 	await expect(page.locator("button.face")).toBeVisible();
+}
+
+/**
+ * The admin's watched entry id for a TMDB title, if it's on the list.
+ */
+export async function watchedIdFor(
+	request: APIRequestContext,
+	token: string,
+	tmdbId: number,
+): Promise<number | undefined> {
+	const res = await request.get("/api/watched", {
+		headers: { Authorization: token },
+	});
+	expect(res.status()).toBe(200);
+	const list: { id: number; content?: { tmdbId: number } }[] = await res.json();
+	return list.find((w) => w.content?.tmdbId === tmdbId)?.id;
+}
+
+/**
+ * Take a title off the admin's list (if it's there), so tests that add
+ * titles leave the seeded list as it was.
+ */
+export async function removeFromList(
+	request: APIRequestContext,
+	token: string,
+	tmdbId: number,
+) {
+	const id = await watchedIdFor(request, token, tmdbId);
+	if (id) {
+		const res = await request.delete(`/api/watched/${id}`, {
+			headers: { Authorization: token },
+		});
+		expect(res.status()).toBe(200);
+	}
 }

@@ -1,40 +1,18 @@
-import type { APIRequestContext } from "@playwright/test";
-import { asAdmin, expect, test } from "./fixtures";
+import {
+	asAdmin,
+	expect,
+	removeFromList,
+	test,
+	watchedIdFor,
+} from "./fixtures";
 
 // The Thing (1982), resolved from its IMDb url by the TMDB stub.
 const THE_THING = 1091;
 
-async function watchedIdFor(
-	request: APIRequestContext,
-	token: string,
-	tmdbId: number,
-): Promise<number | undefined> {
-	const res = await request.get("/api/watched", {
-		headers: { Authorization: token },
-	});
-	expect(res.status()).toBe(200);
-	const list: { id: number; content?: { tmdbId: number } }[] = await res.json();
-	return list.find((w) => w.content?.tmdbId === tmdbId)?.id;
-}
-
-async function removeWatched(
-	request: APIRequestContext,
-	token: string,
-	tmdbId: number,
-) {
-	const id = await watchedIdFor(request, token, tmdbId);
-	if (id) {
-		const res = await request.delete(`/api/watched/${id}`, {
-			headers: { Authorization: token },
-		});
-		expect(res.status()).toBe(200);
-	}
-}
-
 test.describe("import", () => {
 	// Leave the seeded list as it was for the other specs.
 	test.afterEach(async ({ request, adminToken }) => {
-		await removeWatched(request, adminToken, THE_THING);
+		await removeFromList(request, adminToken, THE_THING);
 	});
 
 	test("a failed row is fixed by pasting an IMDb url", async ({
