@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/sbondCo/Watcharr/database/entity"
+	"github.com/sbondCo/Watcharr/database/query"
 	"github.com/sbondCo/Watcharr/domain"
 	"github.com/sbondCo/Watcharr/util"
 	"gorm.io/gorm"
@@ -139,6 +140,8 @@ func refineSort(
 			Name: "`Content`.`release_date`",
 			Raw:  true,
 		}))
+	case domain.WatchedSortGrade:
+		query.OrderByGrade(db, dir == domain.WatchedSortDirAsc)
 	}
 }
 
@@ -160,6 +163,7 @@ func watchedRefineFilter(
 		// Apply filters
 		refineFilterType(db, wr.FilterType)
 		refineFilterStatus(db, wr.FilterStatus, userSettings)
+		query.FilterGrade(db, wr.FilterGrade)
 		return db
 	}
 }

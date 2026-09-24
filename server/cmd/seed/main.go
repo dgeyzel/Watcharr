@@ -42,20 +42,22 @@ type seedItem struct {
 	Tagged      bool
 	// Hidden from visitors (a draft).
 	Hidden bool
+	// S-F grade ("" = ungraded).
+	Grade string
 }
 
 // The fixture list. It covers movies and tv, every status and a tag.
 // Later phases extend it (hidden items, grades).
 var items = []seedItem{
-	{"movie", 550, "FINISHED", 9, "A seeded review of Fight Club.", true, false},
-	{"movie", 603, "FINISHED", 8, "A hidden draft review of The Matrix.", false, true},
-	{"movie", 680, "WATCHING", 0, "", false, false},
-	{"movie", 13, "PLANNED", 0, "", false, false},
-	{"movie", 27205, "HOLD", 7, "An on hold review.", true, false},
-	{"movie", 157336, "DROPPED", 3, "A dropped review.", false, false},
-	{"tv", 1396, "FINISHED", 10, "A seeded review of Breaking Bad.", true, false},
-	{"tv", 1399, "WATCHING", 0, "", false, false},
-	{"tv", 66732, "PLANNED", 0, "", false, false},
+	{"movie", 550, "FINISHED", 9, "A seeded review of Fight Club.", true, false, "A"},
+	{"movie", 603, "FINISHED", 8, "A hidden draft review of The Matrix.", false, true, "B"},
+	{"movie", 680, "WATCHING", 0, "", false, false, ""},
+	{"movie", 13, "PLANNED", 0, "", false, false, ""},
+	{"movie", 27205, "HOLD", 7, "An on hold review.", true, false, "D"},
+	{"movie", 157336, "DROPPED", 3, "A dropped review.", false, false, ""},
+	{"tv", 1396, "FINISHED", 10, "A seeded review of Breaking Bad.", true, false, "S"},
+	{"tv", 1399, "WATCHING", 0, "", false, false, "C"},
+	{"tv", 66732, "PLANNED", 0, "", false, false, ""},
 }
 
 func main() {
@@ -124,13 +126,17 @@ func main() {
 		var w struct {
 			ID int `json:"id"`
 		}
-		c.do(http.MethodPost, "/api/watched", map[string]any{
+		body := map[string]any{
 			"contentType": it.ContentType,
 			"tmdbId":      it.TmdbID,
 			"status":      it.Status,
 			"rating":      it.Rating,
 			"thoughts":    it.Thoughts,
-		}, &w)
+		}
+		if it.Grade != "" {
+			body["grade"] = it.Grade
+		}
+		c.do(http.MethodPost, "/api/watched", body, &w)
 		if it.Hidden {
 			c.do(http.MethodPut, fmt.Sprintf("/api/watched/%d", w.ID), map[string]any{"hidden": true}, nil)
 		}

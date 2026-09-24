@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/gin-contrib/cache"
 	"github.com/gin-gonic/gin"
 	"github.com/sbondCo/Watcharr/router"
 )
@@ -32,6 +33,8 @@ func (r *Router) AddRoutes() {
 	public.GET("/tags", noCache, r.ListTags)
 	public.GET("/tag/:id", noCache, r.GetTag)
 	public.GET("/tag/:id/watched", noCache, r.ListTagWatched)
+	// Computed from visible items, cached for a few minutes.
+	public.GET("/stats", cacheFor(5*time.Minute), cache.CachePage(r.br.MemStore, 5*time.Minute, r.GetStats))
 }
 
 // Owner edits must show up for visitors straight away, so these can be
@@ -111,5 +114,10 @@ func (r *Router) ListTagWatched(c *gin.Context) {
 	}
 	req.Tag = tag.ID
 	v, err := r.service.ListWatched(req)
+	respond(c, v, err)
+}
+
+func (r *Router) GetStats(c *gin.Context) {
+	v, err := r.service.GetStats()
 	respond(c, v, err)
 }

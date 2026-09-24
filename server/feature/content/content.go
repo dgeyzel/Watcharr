@@ -9,6 +9,7 @@ import (
 	"os"
 	"path"
 	"strconv"
+	"strings"
 	"time"
 
 	gocache "github.com/robfig/go-cache"
@@ -133,6 +134,7 @@ func (s *Service) saveContent(c *entity.Content, onlyUpdate bool) error {
 				"runtime",
 				"number_of_episodes",
 				"number_of_seasons",
+				"genres",
 			}),
 		}).Create(&c)
 		if res.Error != nil {
@@ -190,6 +192,7 @@ func (s *Service) CacheContentShow(
 		Runtime:          runtime,
 		NumberOfEpisodes: content.NumberOfEpisodes,
 		NumberOfSeasons:  content.NumberOfSeasons,
+		Genres:           genreNames(content.ContentDetails),
 	}
 
 	err = s.saveContent(&c, onlyUpdate)
@@ -230,6 +233,7 @@ func (s *Service) CacheContentMovie(
 		Budget:      content.Budget,
 		Revenue:     content.Revenue,
 		Runtime:     content.Runtime,
+		Genres:      genreNames(content.ContentDetails),
 	}
 
 	err = s.saveContent(&c, onlyUpdate)
@@ -300,4 +304,16 @@ func (s *Service) GetOrCacheContent(
 
 	}
 	return content, nil
+}
+
+// genreNames joins the TMDB genre names with commas (TMDB genre names don't
+// contain commas), for storing on Content.
+func genreNames(d tmdb.ContentDetails) string {
+	names := make([]string, 0, len(d.Genres))
+	for _, g := range d.Genres {
+		if n := strings.TrimSpace(g.Name); n != "" {
+			names = append(names, n)
+		}
+	}
+	return strings.Join(names, ",")
 }

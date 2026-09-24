@@ -25,6 +25,8 @@ const (
 	WatchedSortRating       WatchedSort = "RATING"
 	WatchedSortAlphabetical WatchedSort = "ALPHA"
 	WatchedSortDateReleased WatchedSort = "DATERELEASED"
+	// S to F, ungraded after graded, planned last.
+	WatchedSortGrade WatchedSort = "GRADE"
 )
 
 type SortDirection string
@@ -44,6 +46,9 @@ type WatchedGetPageRequest struct {
 	// Filtering options.
 	FilterType   []util.SupportedMedia  `form:"type" collection_format:"csv"`
 	FilterStatus []entity.WatchedStatus `form:"status" collection_format:"csv"`
+	// Grades to filter by (S..F), "none" matches finished/watching items
+	// that have no grade.
+	FilterGrade []string `form:"grade" collection_format:"csv"`
 }
 
 type WatchedGetPageExtraProps struct {
@@ -76,6 +81,7 @@ type WatchedDto struct {
 	Rating    float64              `json:"rating"`
 	Pinned    bool                 `json:"pinned"`
 	Hidden    bool                 `json:"hidden"`
+	Grade     *entity.Grade        `json:"grade"`
 
 	// Properties that may not be included in all watched dtos
 	// (depending on where we are making the dto for)
@@ -105,6 +111,7 @@ func NewWatchedDtoWithBaseProps(w *entity.Watched) WatchedDto {
 		Rating:    w.Rating,
 		Pinned:    w.Pinned,
 		Hidden:    w.Hidden,
+		Grade:     w.Grade,
 	}
 }
 
@@ -163,6 +170,11 @@ type WatchedAddRequest struct {
 	Status   entity.WatchedStatus `json:"status"`
 	Rating   float64              `json:"rating" binding:"max=10"`
 	Thoughts string               `json:"thoughts"`
+	// Optional S-F grade (invalid values are rejected with 400). Imports never
+	// set this from a numeric rating.
+	Grade entity.OptionalGrade `json:"grade"`
+	// Optional, hide from visitors. Defaults to visible.
+	Hidden *bool `json:"hidden"`
 	// Pass a watched date and we will set the CreatedAt (and initial UpdatedAt)
 	// properties for this watched entry to this specific date.
 	WatchedDate time.Time `json:"watchedDate,omitempty"`
@@ -177,6 +189,8 @@ type WatchedUpdateRequest struct {
 	Pinned         *bool                `json:"pinned" `
 	// Hide from (or show to) visitors.
 	Hidden *bool `json:"hidden"`
+	// S-F grade, null or "" clears it. Invalid values are rejected (400).
+	Grade entity.OptionalGrade `json:"grade"`
 	// Allow the added activity count as play?
 	// If the activity was going to count, this can stop it.
 	LetCountAsPlay *bool `json:"letCountAsPlay"`
@@ -191,6 +205,7 @@ func (w WatchedUpdateRequest) Valid() error {
 		(w.Thoughts == "" && !w.RemoveThoughts) &&
 		w.Pinned == nil &&
 		w.Hidden == nil &&
+		!w.Grade.Set &&
 		w.LetCountAsPlay == nil {
 		// No properties are set, so this struct is not valid.
 		return errors.New("no properties provided")

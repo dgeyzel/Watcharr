@@ -291,6 +291,8 @@ func (s *Service) AddWatched(
 	watched.Status = ar.Status
 	watched.Rating = ar.Rating
 	watched.Thoughts = ar.Thoughts
+	watched.Grade = ar.Grade.Value
+	watched.Hidden = util.Deref(ar.Hidden, false)
 
 	// If custom WatchedDate passed, set CreatedAt and UpdatedAt fields to it.
 	if !ar.WatchedDate.IsZero() {
@@ -427,6 +429,8 @@ func (s *Service) restoreWatchedAfterDuplicatedKeyErr(
 			"status":     ar.Status,
 			"rating":     ar.Rating,
 			"thoughts":   ar.Thoughts,
+			"grade":      ar.Grade.Value,
+			"hidden":     util.Deref(ar.Hidden, false),
 			"deleted_at": nil,
 		})
 	if res.Error != nil || res.RowsAffected == 0 {
@@ -439,6 +443,8 @@ func (s *Service) restoreWatchedAfterDuplicatedKeyErr(
 	watchedOut.Status = ar.Status
 	watchedOut.Rating = ar.Rating
 	watchedOut.Thoughts = ar.Thoughts
+	watchedOut.Grade = ar.Grade.Value
+	watchedOut.Hidden = util.Deref(ar.Hidden, false)
 	watchedOut.DeletedAt = gorm.DeletedAt{}
 
 	slog.Info("restoreWatchedAfterDuplicatedKeyErr: Updated record.",
@@ -466,6 +472,7 @@ func (s *Service) updateWatched(
 		return domain.WatchedUpdateResponse{}, errors.New("failed to update watched entry")
 	}
 	originalThoughts := upwat.Thoughts
+	originalGrade := upwat.Grade
 	if ar.Rating != 0 {
 		upwat.Rating = ar.Rating
 	}
@@ -483,6 +490,9 @@ func (s *Service) updateWatched(
 	}
 	if ar.Hidden != nil {
 		upwat.Hidden = *ar.Hidden
+	}
+	if ar.Grade.Set {
+		upwat.Grade = ar.Grade.Value
 	}
 	res = s.db.Save(upwat)
 	if res.RowsAffected <= 0 {
@@ -530,6 +540,20 @@ func (s *Service) updateWatched(
 				WatchedID: id,
 				Type:      entity.THOUGHTS_REMOVED,
 				Data:      originalThoughts,
+			},
+			false,
+		)
+	}
+	if ar.Grade.Set && entity.RankOf(originalGrade) != entity.RankOf(ar.Grade.Value) {
+		data, _ := json.Marshal(map[string]*entity.Grade{
+			"old": originalGrade,
+			"new": ar.Grade.Value,
+		})
+		addedActivity, _ = s.activityProvider.AddActivity(userId,
+			domain.ActivityAddProps{
+				WatchedID: id,
+				Type:      entity.GRADE_CHANGED,
+				Data:      string(data),
 			},
 			false,
 		)

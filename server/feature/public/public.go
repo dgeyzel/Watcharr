@@ -9,9 +9,11 @@ import (
 	"math"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/sbondCo/Watcharr/config"
 	"github.com/sbondCo/Watcharr/database/entity"
+	"github.com/sbondCo/Watcharr/database/query"
 	"github.com/sbondCo/Watcharr/media/tmdb"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -30,6 +32,8 @@ const (
 	SortDateAdded    Sort = "DATEADDED"
 	SortAlphabetical Sort = "ALPHA"
 	SortDateReleased Sort = "DATERELEASED"
+	// S to F (F to S with sortDir=asc), ungraded after graded, planned last.
+	SortGrade Sort = "GRADE"
 )
 
 // ListRequest holds the (untrusted) query params for listing watched items.
@@ -43,6 +47,8 @@ type ListRequest struct {
 	// Comma separated list of media types (movie, tv).
 	Type string `form:"type"`
 	Tag  uint   `form:"tag"`
+	// Comma separated grades (S..F) and/or "none" (watched but not rated).
+	Grade string `form:"grade"`
 	// Search the owner's list by title (never hits TMDB).
 	Q string `form:"q"`
 }
@@ -51,10 +57,12 @@ type Service struct {
 	db   *gorm.DB
 	cfg  *config.ServerConfig
 	tmdb *tmdb.TMDB
+	// Clock, overridable in tests.
+	now func() time.Time
 }
 
 func NewService(db *gorm.DB, cfg *config.ServerConfig, tmdb *tmdb.TMDB) *Service {
-	return &Service{db: db, cfg: cfg, tmdb: tmdb}
+	return &Service{db: db, cfg: cfg, tmdb: tmdb, now: time.Now}
 }
 
 // owner returns the site owner (the first admin).
@@ -64,13 +72,14 @@ func (s *Service) owner() (entity.User, error) {
 		Where("(permissions & ?) != 0", entity.PERM_ADMIN).
 		Order("id").
 		Preload("Avatar").
-		Take(&u)
+		Limit(1).Find(&u)
 	if res.Error != nil {
-		if errors.Is(res.Error, gorm.ErrRecordNotFound) {
-			return u, ErrNotFound
-		}
 		slog.Error("public owner: query failed", "error", res.Error)
 		return u, res.Error
+	}
+	// Find (not Take) so a miss isn't logged as an error.
+	if res.RowsAffected == 0 {
+		return u, ErrNotFound
 	}
 	return u, nil
 }
@@ -137,8 +146,11 @@ func (s *Service) ListWatched(req ListRequest) (WatchedPageResponse, error) {
 		q = q.Where("watcheds.id IN (?)",
 			s.db.Table("watched_tags").Select("watched_id").Where("tag_id = ?", req.Tag))
 	}
-	if query := strings.TrimSpace(req.Q); query != "" {
-		q = q.Where("Content.title LIKE ?", "%"+query+"%")
+	if req.Grade != "" {
+		q = query.FilterGrade(q, []string{req.Grade})
+	}
+	if search := strings.TrimSpace(req.Q); search != "" {
+		q = q.Where("Content.title LIKE ?", "%"+search+"%")
 	}
 
 	if err := q.Count(&resp.TotalResults).Error; err != nil {
@@ -148,8 +160,15 @@ func (s *Service) ListWatched(req ListRequest) (WatchedPageResponse, error) {
 	resp.TotalPages = int(math.Ceil(float64(resp.TotalResults) / float64(req.Limit)))
 
 	desc := strings.ToLower(req.SortDir) != "asc"
+	ordered := q
 	var col clause.Column
+	colDesc := desc
 	switch req.Sort {
+	case SortGrade:
+		ordered = query.OrderByGrade(ordered, !desc)
+		// Then alphabetical within the same grade.
+		col = clause.Column{Name: "`Content`.`title`", Raw: true}
+		colDesc = false
 	case SortAlphabetical:
 		col = clause.Column{Name: "`Content`.`title`", Raw: true}
 	case SortDateReleased:
@@ -159,9 +178,9 @@ func (s *Service) ListWatched(req ListRequest) (WatchedPageResponse, error) {
 	}
 
 	var watched []entity.Watched
-	res := q.
+	res := ordered.
 		Preload("Tags").
-		Order(clause.OrderByColumn{Column: col, Desc: desc}).
+		Order(clause.OrderByColumn{Column: col, Desc: colDesc}).
 		// Stable order between pages.
 		Order(clause.OrderByColumn{Column: clause.Column{Name: "watcheds.id"}, Desc: desc}).
 		Offset((req.Page - 1) * req.Limit).
@@ -204,13 +223,13 @@ func (s *Service) getVisible(mediaType string, tmdbID string) (entity.Watched, e
 		Joins("Content").
 		Preload("Tags").
 		Where("Content.type = ? AND Content.tmdb_id = ?", ct, id).
-		Take(&w)
+		Limit(1).Find(&w)
 	if res.Error != nil {
-		if errors.Is(res.Error, gorm.ErrRecordNotFound) {
-			return w, o, ErrNotFound
-		}
 		slog.Error("public getVisible: query failed", "error", res.Error)
 		return w, o, res.Error
+	}
+	if res.RowsAffected == 0 {
+		return w, o, ErrNotFound
 	}
 	return w, o, nil
 }
@@ -290,12 +309,12 @@ func (s *Service) GetTag(id string) (TagResponse, error) {
 		return TagResponse{}, err
 	}
 	var t entity.Tag
-	res := s.db.Where("id = ? AND user_id = ?", tid, o.ID).Take(&t)
+	res := s.db.Where("id = ? AND user_id = ?", tid, o.ID).Limit(1).Find(&t)
 	if res.Error != nil {
-		if errors.Is(res.Error, gorm.ErrRecordNotFound) {
-			return TagResponse{}, ErrNotFound
-		}
 		return TagResponse{}, res.Error
+	}
+	if res.RowsAffected == 0 {
+		return TagResponse{}, ErrNotFound
 	}
 	return newTagResponse(t), nil
 }

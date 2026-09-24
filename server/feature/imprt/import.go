@@ -138,6 +138,8 @@ func (s *Service) SuccessfulImport(
 		Rating:      ar.Rating,
 		Thoughts:    ar.Thoughts,
 		WatchedDate: wDate,
+		Grade:       ar.Grade,
+		Hidden:      ar.Hidden,
 	}
 	switch props.ContentType {
 	case util.SupportedMediaMovie, util.SupportedMediaShow:

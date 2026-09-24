@@ -58,6 +58,11 @@ type ImportRequest struct {
 	WatchedEpisodes  []entity.WatchedEpisode `json:"watchedEpisodes"`
 	WatchedSeason    []entity.WatchedSeason  `json:"watchedSeasons"`
 	Tags             []TagAddRequest         `json:"tags"`
+	// Only set when restoring a Watcharr export (lossless backup). Other
+	// importers never set these, a numeric rating is never turned into a
+	// grade.
+	Grade  entity.OptionalGrade `json:"grade"`
+	Hidden *bool                `json:"hidden"`
 }
 
 // Internal struct given to the SuccessfulImport function.

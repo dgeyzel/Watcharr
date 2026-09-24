@@ -40,10 +40,13 @@ type WatchedResponse struct {
 	PosterPath  string               `json:"posterPath"`
 	ReleaseDate *time.Time           `json:"releaseDate"`
 	Status      entity.WatchedStatus `json:"status"`
-	Review      string               `json:"review"`
-	Tags        []TagResponse        `json:"tags"`
-	CreatedAt   time.Time            `json:"createdAt"`
-	UpdatedAt   time.Time            `json:"updatedAt"`
+	// S-F grade or null. Always null for planned titles (they have no grade
+	// slot), even if a grade is saved.
+	Grade     *entity.Grade `json:"grade"`
+	Review    string        `json:"review"`
+	Tags      []TagResponse `json:"tags"`
+	CreatedAt time.Time     `json:"createdAt"`
+	UpdatedAt time.Time     `json:"updatedAt"`
 }
 
 type WatchedPageResponse struct {
@@ -83,6 +86,7 @@ func newWatchedResponse(w *entity.Watched) WatchedResponse {
 	r := WatchedResponse{
 		Status:    w.Status,
 		Review:    w.Thoughts,
+		Grade:     publicGrade(w),
 		Tags:      []TagResponse{},
 		CreatedAt: w.CreatedAt,
 		UpdatedAt: w.UpdatedAt,
@@ -133,4 +137,12 @@ func newContentResponse(t entity.ContentType, m domain.Media) ContentResponse {
 		Providers:             nonNil(m.Providers),
 		ProvidersFullListLink: m.ProvidersFullListLink,
 	}
+}
+
+// publicGrade is the grade visitors see: none while a title is planned.
+func publicGrade(w *entity.Watched) *entity.Grade {
+	if w.Status == entity.PLANNED {
+		return nil
+	}
+	return w.Grade
 }

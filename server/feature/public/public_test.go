@@ -36,18 +36,20 @@ type item struct {
 	rating             float64
 	thoughts           string
 	tagged             bool
+	// Grade set when adding ("" = ungraded).
+	grade string
 }
 
 var items = []item{
-	{"Fight Club", "movie", 550, "FINISHED", 9, "Review of Fight Club.", true},
-	{"The Matrix", "movie", 603, "FINISHED", 8, "Hidden draft review.", false}, // hidden below
-	{"Pulp Fiction", "movie", 680, "WATCHING", 0, "", false},
-	{"Forrest Gump", "movie", 13, "PLANNED", 0, "", false},
-	{"Inception", "movie", 27205, "HOLD", 7, "On hold.", true},
-	{"Interstellar", "movie", 157336, "DROPPED", 3, "Dropped.", false},
-	{"Breaking Bad", "tv", 1396, "FINISHED", 10, "Review of Breaking Bad.", true},
-	{"Game of Thrones", "tv", 1399, "WATCHING", 0, "", false},
-	{"Stranger Things", "tv", 66732, "PLANNED", 0, "", false},
+	{"Fight Club", "movie", 550, "FINISHED", 9, "Review of Fight Club.", true, "A"},
+	{"The Matrix", "movie", 603, "FINISHED", 8, "Hidden draft review.", false, "F"}, // hidden below
+	{"Pulp Fiction", "movie", 680, "WATCHING", 0, "", false, ""},
+	{"Forrest Gump", "movie", 13, "PLANNED", 0, "", false, "B"}, // planned, grade must not show
+	{"Inception", "movie", 27205, "HOLD", 7, "On hold.", true, "D"},
+	{"Interstellar", "movie", 157336, "DROPPED", 3, "Dropped.", false, ""},
+	{"Breaking Bad", "tv", 1396, "FINISHED", 10, "Review of Breaking Bad.", true, "S"},
+	{"Game of Thrones", "tv", 1399, "WATCHING", 0, "", false, "C"},
+	{"Stranger Things", "tv", 66732, "PLANNED", 0, "", false, ""},
 }
 
 // The titles visitors should see from `items`.
@@ -71,10 +73,14 @@ func newFixture(t *testing.T) *fixture {
 	f.tagID = tag("Favourites")
 	f.privateTagID = tag("Drafts")
 	for _, it := range items {
-		id := s.AddWatched(f.token, map[string]any{
+		body := map[string]any{
 			"contentType": it.contentType, "tmdbId": it.tmdbID,
 			"status": it.status, "rating": it.rating, "thoughts": it.thoughts,
-		})
+		}
+		if it.grade != "" {
+			body["grade"] = it.grade
+		}
+		id := s.AddWatched(f.token, body)
 		f.ids[it.title] = id
 		if it.tagged {
 			f.do(http.MethodPost, fmt.Sprintf("/api/watched/%d/tag/%d", id, f.tagID), nil)
@@ -300,7 +306,7 @@ func keysOf(t *testing.T, raw json.RawMessage) []string {
 // ratings, user ids, activity, hidden flag, settings) can slip in.
 func TestPublicResponseKeysAreExact(t *testing.T) {
 	f := newFixture(t)
-	watchedKeys := []string{"createdAt", "mediaType", "posterPath", "releaseDate", "review", "status", "tags", "title", "tmdbId", "updatedAt"}
+	watchedKeys := []string{"createdAt", "grade", "mediaType", "posterPath", "releaseDate", "review", "status", "tags", "title", "tmdbId", "updatedAt"}
 	tagKeys := []string{"bgColor", "color", "id", "name"}
 	pageKeys := []string{"limit", "page", "results", "totalPages", "totalResults"}
 	contentKeys := []string{"backdropPath", "genres", "homepage", "mediaType", "overview", "posterPath", "providers", "providersFullListLink", "releaseDate", "releaseDateLast", "runtime", "seasons", "status", "title", "tmdbId", "videos"}
@@ -347,7 +353,7 @@ func TestPublicResponseKeysAreExact(t *testing.T) {
 func TestPublicResponsesNeverContainPrivateKeys(t *testing.T) {
 	f := newFixture(t)
 	paths := []string{
-		"/api/public/owner", "/api/public/watched", "/api/public/watched/movie/550",
+		"/api/public/owner", "/api/public/watched", "/api/public/watched/movie/550", "/api/public/stats",
 		"/api/public/content/movie/550", "/api/public/content/tv/1396", "/api/public/tags",
 		fmt.Sprintf("/api/public/tag/%d", f.tagID), fmt.Sprintf("/api/public/tag/%d/watched", f.tagID),
 	}
