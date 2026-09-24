@@ -16,8 +16,7 @@
 			</span>
 		{/each}
 	{:else}
-		<!-- Generic "unknown" text, since this component
-		 	 is also used for displaying Game Modes. -->
+		<!-- Generic "unknown" text. -->
 		<span>Unknown</span>
 	{/if}
 </div>

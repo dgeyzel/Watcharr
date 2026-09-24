@@ -6,11 +6,9 @@ import {
 	type WatchedUpdateRequest,
 	type WatchedUpdateResponse,
 	type UserSettings,
-	type Follow,
 	type ActivityUpdateRequest,
 	type Activity,
 	type SupportedMedia,
-	type ServerFeatures,
 } from "@/types";
 import { Reqer, ReqerError } from "./fetch";
 import { notify, unNotify } from "./notify";
@@ -165,8 +163,6 @@ export async function updateWatched(
 		};
 		if (opts.contentType === "movie" || opts.contentType === "tv") {
 			reqBody.tmdbId = opts.contentId;
-		} else if (opts.contentType === "game") {
-			reqBody.igdbId = opts.contentId;
 		} else {
 			throw "invalid contentType";
 		}
@@ -284,49 +280,5 @@ export function changeUserPassword(
 			);
 			unNotify(nid);
 			if (typeof done !== "undefined") done(errMsg);
-		});
-}
-
-/**
- * Update serverFeatues store with fresh data.
- */
-export async function getServerFeatures() {
-	try {
-		const f = await req.get<ServerFeatures>("/features");
-		if (f) {
-			store.serverFeatures = f;
-		}
-	} catch (err) {
-		console.error("getServerFeatures failed!", err);
-	}
-}
-
-export async function followUser(id: number) {
-	const nid = notify({ text: `Following`, type: "loading" });
-	req
-		.post<Follow>(`/follow/${id}`)
-		.then((resp) => {
-			console.log("Followed:", resp);
-			store.follows.push(resp);
-			notify({ id: nid, text: `Followed!`, type: "success" });
-		})
-		.catch((err) => {
-			console.error(err);
-			notify({ id: nid, text: "Failed To Follow!", type: "error" });
-		});
-}
-
-export async function unfollowUser(id: number) {
-	const nid = notify({ text: `Unfollowing`, type: "loading" });
-	req
-		.delete(`/follow/${id}`)
-		.then((resp) => {
-			console.log("Unfollowed:", resp);
-			store.follows = store.follows.filter((fo) => fo.followedUser.id != id);
-			notify({ id: nid, text: `Unfollowed!`, type: "success" });
-		})
-		.catch((err) => {
-			console.error(err);
-			notify({ id: nid, text: "Failed To Unfollow!", type: "error" });
 		});
 }

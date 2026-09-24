@@ -14,7 +14,7 @@
 		<div class="inner">
 			<p>
 				An open source project that helps you keep the content you are watching
-				or playing organized and places you in control.
+				organized and places you in control.
 			</p>
 			<div class="horizontal-icon-list">
 				<a
@@ -36,13 +36,10 @@
 					& Docs
 				</a>
 			</div>
-			<h5 class="norm">Watcharr uses the following media databases:</h5>
+			<h5 class="norm">Watcharr uses the following media database:</h5>
 			<div class="horizontal-icon-list">
 				<a href="https://www.themoviedb.org/" target="_blank" title="TMDB">
 					<Icon i="tmdb" wh={60} />
-				</a>
-				<a href="https://www.igdb.com/" target="_blank" title="IGDB">
-					<Icon i="igdb" wh={60} />
 				</a>
 			</div>
 			<h5 class="norm">

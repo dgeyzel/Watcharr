@@ -9,7 +9,6 @@
 	import DetailedMenu from "@/lib/nav/DetailedMenu.svelte";
 	import FaceMenu from "@/lib/nav/FaceMenu.svelte";
 	import FilterMenu from "@/lib/nav/FilterMenu.svelte";
-	import FollowingMenu from "@/lib/nav/FollowingMenu.svelte";
 	import SortMenu from "@/lib/nav/SortMenu.svelte";
 	import TagMenu from "@/lib/tag/TagMenu.svelte";
 	import { req } from "@/lib/util/api";
@@ -17,13 +16,7 @@
 	import { isAdminOnlyRoute } from "@/lib/util/routes";
 	import { isTouch } from "@/lib/util/helpers";
 	import { store, defaultSort } from "@/store.svelte";
-	import type {
-		ServerFeatures,
-		Follow,
-		PrivateUser,
-		Tag,
-		UserSettings,
-	} from "@/types";
+	import type { PrivateUser, Tag, UserSettings } from "@/types";
 	import { onMount } from "svelte";
 	import { SvelteURLSearchParams } from "svelte/reactivity";
 	interface Props {
@@ -38,7 +31,6 @@
 	let subMenuShown = $state(false);
 	let filterMenuShown = $state(false);
 	let sortMenuShown = $state(false);
-	let followingMenuShown = $state(false);
 	let detailedMenuShown = $state(false);
 	let tagMenuShown = $state(false);
 	let scroll = window.scrollY;
@@ -132,11 +124,9 @@
 			store.tags = await getPublicTags();
 			return;
 		}
-		const [u, s, f, fo, ts] = await Promise.all([
+		const [u, s, ts] = await Promise.all([
 			req.get<PrivateUser>("/user"),
 			req.get<UserSettings>("/user/settings"),
-			req.get<ServerFeatures>("/features"),
-			req.get<Follow[]>("/follow"),
 			req.get<Tag[]>("/tag"),
 		]);
 		if (u) {
@@ -144,12 +134,6 @@
 		}
 		if (s) {
 			store.userSettings = s;
-		}
-		if (f) {
-			store.serverFeatures = f;
-		}
-		if (fo) {
-			store.follows = fo;
 		}
 		if (ts) {
 			store.tags = ts;
@@ -160,7 +144,6 @@
 		if (except !== "sub") subMenuShown = false;
 		if (except !== "filter") filterMenuShown = false;
 		if (except !== "sort") sortMenuShown = false;
-		if (except !== "following") followingMenuShown = false;
 		if (except !== "detailed") detailedMenuShown = false;
 		if (except !== "tag") tagMenuShown = false;
 	}
@@ -297,8 +280,8 @@
 					<DetailedMenu />
 				{/if}
 			{/if}
-			<!-- Show on watched list and shared/followed watched lists -->
-			{#if page.url?.pathname === "/" || page.url?.pathname.includes("/lists/") || page.url?.pathname.includes("/tag/")}
+			<!-- Show on the watched list and tag pages -->
+			{#if page.url?.pathname === "/" || page.url?.pathname.includes("/tag/")}
 				<button
 					class="plain other sort"
 					onclick={() => {
@@ -364,23 +347,6 @@
 				>
 					<Icon i="compass" wh={26} />
 				</button>
-				<button
-					class="plain other following"
-					onclick={() => {
-						closeAllSubMenus("following");
-						followingMenuShown = !followingMenuShown;
-					}}
-					use:tooltip={{
-						text: "Following",
-						pos: "bot",
-						condition: !followingMenuShown,
-					}}
-				>
-					<Icon i="people" wh={26} />
-				</button>
-				{#if followingMenuShown}
-					<FollowingMenu close={() => (followingMenuShown = false)} />
-				{/if}
 				<button class="plain face" onclick={handleProfileClick}>:)</button>
 				{#if subMenuShown}
 					<FaceMenu />
@@ -667,7 +633,7 @@
 				margin-right: 12px;
 			}
 
-			button.following {
+			button.discover {
 				margin-right: 17px;
 			}
 

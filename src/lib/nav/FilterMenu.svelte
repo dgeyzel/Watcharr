@@ -47,14 +47,6 @@
 		>
 			MOVIE
 		</button>
-		{#if store.serverFeatures?.games}
-			<button
-				class:active={store.activeFilters.type.includes("game")}
-				onclick={() => filterClicked("type", "game")}
-			>
-				GAME
-			</button>
-		{/if}
 	</div>
 	<h4 class="norm sm-caps">status</h4>
 	<button
@@ -68,18 +60,12 @@
 		onclick={() => filterClicked("status", "watching")}
 	>
 		watching
-		{#if store.serverFeatures?.games}
-			(playing)
-		{/if}
 	</button>
 	<button
 		class={`plain ${store.activeFilters.status.includes("finished") ? "on" : ""}`}
 		onclick={() => filterClicked("status", "finished")}
 	>
 		finished
-		{#if store.serverFeatures?.games}
-			(played)
-		{/if}
 	</button>
 	<!-- On hold and dropped are admin only statuses. -->
 	{#if store.isAdmin}

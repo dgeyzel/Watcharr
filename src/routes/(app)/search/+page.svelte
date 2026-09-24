@@ -13,11 +13,9 @@
 		SearchType,
 		type Media,
 		type PaginationResponse,
-		type PublicUser,
 		type SearchRequest,
 		type SearchResponseMeta,
 	} from "@/types";
-	import UsersList from "@/lib/UsersList.svelte";
 	import { onDestroy, onMount } from "svelte";
 	import Error from "@/lib/Error.svelte";
 	import infScroll from "@/lib/util/infScroll.js";
@@ -116,12 +114,6 @@
 		goto(resolve(`/search?${curLocation.searchParams.toString()}`));
 	}
 
-	async function searchUsers(query: string) {
-		return await req.get<PublicUser[]>(`/user/search`, {
-			params: { q: query },
-		});
-	}
-
 	onMount(() => {
 		if (!store.searchQuery && data?.query) {
 			store.searchQuery = decodeURIComponent(data?.query);
@@ -185,14 +177,6 @@
 			<!-- Uses data?.query instead of store.searchQuery,
 			 	so that the debounce of search is respected. -->
 			{#if store.isAdmin}
-				{#await searchUsers(data?.query) then results}
-					{#if results?.length > 0}
-						<UsersList users={results} />
-					{/if}
-				{:catch err}
-					<Error pretty="Failed to load users!" error={err} />
-				{/await}
-
 				<PageTitle title="Results">
 					<MediaTypeFilter
 						active={searchType}
@@ -226,7 +210,7 @@
 								name={w.name}
 								path={w.extPosterPath}
 							/>
-						{:else if w.type === MediaTypeE.tmdbMovie || w.type === MediaTypeE.tmdbShow || w.type === MediaTypeE.igdbGame}
+						{:else if w.type === MediaTypeE.tmdbMovie || w.type === MediaTypeE.tmdbShow}
 							<Poster
 								media={w}
 								bind:watched={dataLoader.state.data[i].watched}

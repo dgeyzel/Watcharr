@@ -22,7 +22,6 @@
 	import Icon from "@/lib/Icon.svelte";
 	import SimilarContent from "@/lib/content/SimilarContent.svelte";
 	import Error from "@/lib/Error.svelte";
-	import FollowedThoughts from "@/lib/content/FollowedThoughts.svelte";
 	import tooltip from "@/lib/actions/tooltip.js";
 	import AddToTagButton from "@/lib/tag/AddToTagButton.svelte";
 	import PageBackdrop from "@/lib/generic/PageBackdrop.svelte";
@@ -232,10 +231,6 @@
 		  person pages or titles that aren't on the list). -->
 		<div class="page">
 			{#if store.isAdmin}
-				{#if data.movieId}
-					<FollowedThoughts mediaType="movie" mediaId={data.movieId} />
-				{/if}
-
 				{#await getMovieCredits()}
 					<Spinner />
 				{:then credits}

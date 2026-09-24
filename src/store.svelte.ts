@@ -1,9 +1,7 @@
 import type {
 	Filters,
-	Follow,
 	ImportedList,
 	PrivateUser,
-	ServerFeatures,
 	Tag,
 	Theme,
 	UserSettings,
@@ -42,8 +40,6 @@ interface Store {
 		| undefined;
 	parsedImportedList: ImportedList[] | undefined;
 	searchQuery: string;
-	serverFeatures: ServerFeatures | undefined;
-	follows: Follow[];
 	wlDetailedView: WLDetailedViewOption[];
 	tags: Tag[];
 }
@@ -62,8 +58,6 @@ const _store: Store = $state({
 	searchQuery: "",
 	userInfo: undefined,
 	userSettings: undefined,
-	serverFeatures: undefined,
-	follows: [],
 	wlDetailedView: [],
 	tags: [],
 });
@@ -188,18 +182,6 @@ export const store = {
 	set userSettings(v) {
 		_store.userSettings = v;
 	},
-	get serverFeatures() {
-		return _store.serverFeatures;
-	},
-	set serverFeatures(v) {
-		_store.serverFeatures = v;
-	},
-	get follows() {
-		return _store.follows;
-	},
-	set follows(v) {
-		_store.follows = v;
-	},
 	get wlDetailedView() {
 		return _store.wlDetailedView;
 	},
@@ -236,8 +218,6 @@ export const clearAllStores = () => {
 	store.searchQuery = "";
 	store.userInfo = undefined;
 	store.userSettings = undefined;
-	store.serverFeatures = undefined;
-	store.follows = [];
 	store.wlDetailedView = [];
 	store.tags = [];
 	clearActiveFilters();

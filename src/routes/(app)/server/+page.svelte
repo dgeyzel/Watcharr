@@ -6,17 +6,15 @@
 	import SettingsList from "@/lib/settings/SettingsList.svelte";
 	import Setting from "@/lib/settings/Setting.svelte";
 	import SettingButton from "@/lib/settings/SettingButton.svelte";
-	import { getServerFeatures, req } from "@/lib/util/api";
+	import { req } from "@/lib/util/api";
 	import Stats from "@/lib/stats/Stats.svelte";
 	import Error from "@/lib/Error.svelte";
 	import Stat from "@/lib/stats/Stat.svelte";
-	import TwitchModal from "./modals/TwitchModal.svelte";
 	import RegionDropDown from "@/lib/RegionDropDown.svelte";
 	import TaskScheduleModal from "./modals/TaskScheduleModal.svelte";
 	import { resolve } from "$app/paths";
 
 	let serverConfig: ServerConfig | undefined = $state();
-	let twitchModalOpen = $state(false);
 	let taskScheduleModalOpen = $state(false);
 	// Disabled vars for disabling inputs until api request completes
 	let debugDisabled = $state(false);
@@ -58,8 +56,6 @@
 	}
 
 	interface ServerStats {
-		users: number;
-		privateUsers: number;
 		watchedMovies: number;
 		watchedShows: number;
 		watchedSeasons: number;
@@ -82,13 +78,6 @@
 				{#await getServerStats()}
 					<Spinner />
 				{:then stats}
-					<Stat
-						name="Users"
-						value={stats.users}
-						href={resolve("/manage_users")}
-						large
-					/>
-					<Stat name="Private Users" value={stats.privateUsers} large />
 					<Stat name="Watched Movies" value={stats.watchedMovies} large />
 					<Stat name="Watched Shows" value={stats.watchedShows} large />
 					<Stat name="Watched Seasons" value={stats.watchedSeasons} large />
@@ -172,47 +161,6 @@
 					{#if taskScheduleModalOpen}
 						<TaskScheduleModal onClose={() => (taskScheduleModalOpen = false)}
 						></TaskScheduleModal>
-					{/if}
-					<div>
-						<h3>Services</h3>
-						<h5 class="norm">
-							These integrations are not in their final stages. Consider them a
-							preview/beta, if you have any issues,
-							<a
-								style="text-decoration: underline;"
-								href="https://github.com/sbondCo/Watcharr/issues/new/choose"
-								target="_blank"
-							>
-								please report them.
-							</a>
-						</h5>
-					</div>
-
-					<Setting title="Twitch">
-						<SettingButton
-							title="Twitch"
-							desc="Twitch application credentials for enabling game support (via IGDB)."
-							icon={serverConfig.TWITCH &&
-							Object.keys(serverConfig.TWITCH).length > 0
-								? "arrow"
-								: "add"}
-							onClick={() => {
-								twitchModalOpen = true;
-							}}
-						/>
-					</Setting>
-
-					{#if twitchModalOpen}
-						<TwitchModal
-							cfg={serverConfig.TWITCH}
-							onClose={() => {
-								// "temporary" solution to showing added servers
-								// and reloading data to revert modified but not saved changes.
-								getServerConfig();
-								getServerFeatures();
-								twitchModalOpen = false;
-							}}
-						/>
 					{/if}
 				{/if}
 			{:catch err}

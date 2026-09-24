@@ -3,7 +3,7 @@ export type WatchedStatus =
 /**
  * Types of media supported by Watcharr in an overarching way.
  */
-export type SupportedMedia = "tv" | "movie" | "game";
+export type SupportedMedia = "tv" | "movie";
 export type ContentType = SupportedMedia | "tv_episode";
 export type MediaType = ContentType | "person";
 
@@ -16,9 +16,6 @@ export type Icon =
 	| "thumb-up"
 	| "play"
 	| "pause"
-	| "jellyfin"
-	| "emby"
-	| "plex"
 	| "trash"
 	| "close"
 	| "close-circle"
@@ -34,10 +31,7 @@ export type Icon =
 	| "sort"
 	| "eye-closed"
 	| "people-nocircle"
-	| "people"
 	| "person"
-	| "person-add"
-	| "person-minus"
 	| "pencil"
 	| "eye"
 	| "star"
@@ -49,7 +43,6 @@ export type Icon =
 	| "themoviedb"
 	| "imdb"
 	| "refresh"
-	| "gamepad"
 	| "film"
 	| "tv"
 	| "pin"
@@ -57,11 +50,9 @@ export type Icon =
 	| "sparkles"
 	| "tag"
 	| "ticket"
-	| "lock-closed"
 	| "github"
 	| "website"
-	| "tmdb"
-	| "igdb";
+	| "tmdb";
 
 export type Theme = "light" | "dark" | "system";
 
@@ -161,7 +152,6 @@ export interface Watched {
 
 export interface WatchedAddRequest {
 	tmdbId?: number;
-	igdbId?: number;
 	contentType: SupportedMedia;
 	rating?: number;
 	status?: WatchedStatus;
@@ -261,13 +251,6 @@ export interface ChangePasswordForm {
 }
 
 // What the user search returns
-export interface PublicUser {
-	id: number;
-	username: string;
-	avatar?: Image;
-	bio?: string;
-}
-
 // PrivateUser - Current users info
 export interface PrivateUser {
 	username: string;
@@ -305,15 +288,12 @@ export interface MediaIDs {
 	imdb?: string;
 	wikidata?: string;
 	tvdb?: number;
-
-	igdb?: number;
 }
 
 export enum MediaTypeE {
 	tmdbMovie = "tmdb_movie",
 	tmdbShow = "tmdb_tv",
 	tmdbPerson = "tmdb_person",
-	igdbGame = "igdb_game",
 }
 
 export interface Media {
@@ -337,7 +317,6 @@ export interface Media {
 	runtime?: number;
 	providers?: MediaProvider[];
 	providersFullListLink?: string;
-	gameModes?: MediaGenre[];
 	seasons?: MediaSeason[];
 	isShowAnime?: boolean;
 }
@@ -348,8 +327,6 @@ export function getContentTypeFromMedia(m: Media): ContentType | undefined {
 			return "movie";
 		case MediaTypeE.tmdbShow:
 			return "tv";
-		case MediaTypeE.igdbGame:
-			return "game";
 	}
 	return;
 }
@@ -401,7 +378,6 @@ export enum SearchType {
 	movie = "movie",
 	show = "show",
 	person = "person",
-	game = "game",
 }
 
 export interface SearchRequest extends PaginationParams {
@@ -555,11 +531,10 @@ export interface ImportResponse {
 export interface ImportedList {
 	tmdbId?: number;
 	imdbId?: string;
-	igdbId?: number;
 
 	name?: string;
 	year?: number;
-	type?: "movie" | "tv" | "tv_episode" | "game";
+	type?: "movie" | "tv" | "tv_episode";
 	state?: ImportResponseType;
 	rating?: number;
 	ratingCustomDate?: Date;
@@ -577,29 +552,14 @@ export interface Filters {
 	status: string[];
 }
 
-export interface ManagedUser {
-	id: number;
-	createdAt: Date;
-	username: string;
-	type: UserType;
-	permissions: number;
-	private: boolean;
-}
-
 export interface ServerConfig {
 	DEFAULT_COUNTRY?: string;
 	TMDB_KEY?: string;
-	TWITCH?: TwitchSettings;
 	DEBUG: boolean;
 }
 
 export interface ServerConfigByName<T> {
 	value: T;
-}
-
-export interface TwitchSettings {
-	clientId?: string;
-	clientSecret?: string;
 }
 
 export interface DropDownItem {
@@ -612,15 +572,6 @@ export interface ListBoxItem {
 	id: number;
 	value: boolean;
 	displayValue: string;
-}
-
-export interface ServerFeatures {
-	games: boolean;
-}
-
-export interface Follow {
-	createdAt: Date;
-	followedUser: PublicUser;
 }
 
 interface MovaryExportBase {

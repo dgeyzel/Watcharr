@@ -15,7 +15,7 @@
 <section class="review" aria-label="Review">
 	<div class="status">
 		<Icon i={watchedStatuses[watched.status]} wh={18} />
-		<span>{toUnderstandableStatus(watched.status, false)}</span>
+		<span>{toUnderstandableStatus(watched.status)}</span>
 	</div>
 	{#if watched.thoughts}
 		<p class="thoughts">{watched.thoughts}</p>

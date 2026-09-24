@@ -59,9 +59,6 @@
 			case SearchType.person:
 				o.push(dropDownOptions.popular);
 				break;
-			case SearchType.game:
-				o.push(dropDownOptions.upcoming);
-				break;
 		}
 		// o.push(dropDownOptions.advanced);
 		return o;

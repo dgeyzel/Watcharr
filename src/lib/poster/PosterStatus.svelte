@@ -12,7 +12,6 @@
 		small?: boolean;
 		btnTooltip?: string;
 		disableInteraction?: boolean;
-		isForGame?: boolean;
 	}
 
 	let {
@@ -23,7 +22,6 @@
 		small = false,
 		btnTooltip = "",
 		disableInteraction = false,
-		isForGame = false,
 	}: Props = $props();
 
 	let statusesShown = $state(false);
@@ -64,7 +62,7 @@
 				class="plain{status && status !== statusName ? ' not-active' : ''}"
 				onclick={() => handleStatusClick(statusName as WatchedStatus)}
 				use:tooltip={{
-					text: toUnderstandableStatus(statusName as WatchedStatus, isForGame),
+					text: toUnderstandableStatus(statusName as WatchedStatus),
 				}}
 			>
 				<Icon i={icon} />

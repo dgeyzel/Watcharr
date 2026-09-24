@@ -10,7 +10,6 @@ describe("isAdminOnlyRoute", () => {
 		"/import/some-failed",
 		"/server",
 		"/profile",
-		"/manage_users",
 	])("%s is admin only", (p) => {
 		expect(isAdminOnlyRoute(p)).toBe(true);
 	});

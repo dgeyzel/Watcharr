@@ -49,10 +49,7 @@
 
 	// This isn't reactive to avoid bugs (hopefully this isn't a bug)
 	let dropDownSupportedTypes = (() => {
-		let t = ["movie", "tv"];
-		if (store.serverFeatures?.games) {
-			t.push("game");
-		}
+		const t = ["movie", "tv"];
 		return t;
 	})();
 
@@ -849,9 +846,7 @@
 								// We found the item in our import list, update it
 								// to match the selected choice and do the import with it.
 								item.type = getContentTypeFromMedia(r);
-								if (item.type === "game") {
-									item.igdbId = r.ids.igdb;
-								} else if (item.type === "movie" || item.type === "tv") {
+								if (item.type === "movie" || item.type === "tv") {
 									item.tmdbId = r.ids.tmdb;
 								} else {
 									item.state = ImportResponseType.IMPORT_FAILED;

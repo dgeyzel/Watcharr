@@ -82,9 +82,18 @@ test.describe("visitor", () => {
 		}
 	});
 
-	test("the old login page is gone", async ({ page }) => {
-		const res = await page.goto("/login");
-		expect(res?.status()).toBe(404);
+	test("removed pages are gone", async ({ page }) => {
+		for (const p of [
+			"/login",
+			"/lists/1/admin",
+			"/manage_users",
+			"/game/1",
+			"/request_admin",
+			"/arr_requests",
+		]) {
+			const res = await page.goto(p);
+			expect(res?.status(), p).toBe(404);
+		}
 	});
 
 	test("footer shows on every visitor page", async ({ page }) => {

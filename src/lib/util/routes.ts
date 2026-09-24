@@ -9,7 +9,6 @@ const ADMIN_ONLY_ROUTES = [
 	"/import",
 	"/server",
 	"/profile",
-	"/manage_users",
 ];
 
 export function isAdminOnlyRoute(pathname: string): boolean {

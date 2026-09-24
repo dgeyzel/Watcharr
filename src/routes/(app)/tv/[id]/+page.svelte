@@ -22,7 +22,6 @@
 		TMDBContentCreditsCrew,
 		WatchedStatus,
 	} from "@/types";
-	import FollowedThoughts from "@/lib/content/FollowedThoughts.svelte";
 	import { getPublicMedia } from "@/lib/public/api";
 	import { ReqerError } from "@/lib/util/fetch";
 	import PublicReview from "@/lib/content/PublicReview.svelte";
@@ -261,10 +260,6 @@
 		  can't open person pages or titles that aren't on the list). -->
 		<div class="page">
 			{#if store.isAdmin}
-				{#if data.tvId}
-					<FollowedThoughts mediaType="tv" mediaId={data.tvId} />
-				{/if}
-
 				{#await getTvCredits()}
 					<Spinner />
 				{:then credits}

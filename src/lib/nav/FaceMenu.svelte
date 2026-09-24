@@ -25,10 +25,6 @@
 		goto(resolve("/server"));
 	}
 
-	function userManagement() {
-		goto(resolve("/manage_users"));
-	}
-
 	function closeAbout() {
 		aboutModalOpen = false;
 	}
@@ -41,7 +37,6 @@
 	<button class="plain" onclick={() => profile()}>Profile</button>
 	{#if user && userHasPermission(user.permissions, UserPermission.PERM_ADMIN)}
 		<button class="plain" onclick={() => serverSettings()}>Settings</button>
-		<button class="plain" onclick={() => userManagement()}>Users</button>
 	{/if}
 	<button class="plain" onclick={() => logout()}>Logout</button>
 	<span>

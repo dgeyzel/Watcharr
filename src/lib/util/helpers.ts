@@ -51,27 +51,15 @@ export function isTouch() {
 }
 
 /**
- * Turns a WatchedStatus into readable and context aware text.
- * Watched statuses can be used normally for movies/tv, but
- * for games, we want to transform the status to make more sense.
- * ex: 'finished' would become 'played' for games, but remain
- *     unmodified for series/movies.
+ * Turns a WatchedStatus into readable text.
  *
  * This is only for use when displaying a status in ui for a user
  * to read, should **never** be involved in logic (comparing
  * statuses for example).
  *
  * @param s The watched status.
- * @param isForGame If this status is being displayed for a game or not.
  */
-export function toUnderstandableStatus(s: WatchedStatus, isForGame: boolean) {
-	if (isForGame) {
-		if (s === "FINISHED") {
-			return "played";
-		} else if (s === "WATCHING") {
-			return "playing";
-		}
-	}
+export function toUnderstandableStatus(s: WatchedStatus) {
 	if (s === "HOLD") {
 		return "on hold";
 	}

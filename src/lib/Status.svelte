@@ -6,11 +6,10 @@
 
 	interface Props {
 		status: WatchedStatus | undefined;
-		isForGame?: boolean;
 		onChange: (newStatus: WatchedStatus) => void;
 	}
 
-	let { status, isForGame = false, onChange }: Props = $props();
+	let { status, onChange }: Props = $props();
 
 	function handleStatusClick(s: WatchedStatus) {
 		if (s === status) return;
@@ -23,7 +22,7 @@
 		class={status && status !== "PLANNED" ? "not-active" : ""}
 		onclick={() => handleStatusClick("PLANNED")}
 		use:tooltip={{
-			text: toUnderstandableStatus("PLANNED", isForGame),
+			text: toUnderstandableStatus("PLANNED"),
 			pos: "top",
 		}}
 	>
@@ -33,7 +32,7 @@
 		class={status && status !== "WATCHING" ? "not-active" : ""}
 		onclick={() => handleStatusClick("WATCHING")}
 		use:tooltip={{
-			text: toUnderstandableStatus("WATCHING", isForGame),
+			text: toUnderstandableStatus("WATCHING"),
 			pos: "top",
 		}}
 	>
@@ -43,7 +42,7 @@
 		class={status && status !== "FINISHED" ? "not-active" : ""}
 		onclick={() => handleStatusClick("FINISHED")}
 		use:tooltip={{
-			text: toUnderstandableStatus("FINISHED", isForGame),
+			text: toUnderstandableStatus("FINISHED"),
 			pos: "top",
 		}}
 	>
@@ -53,7 +52,7 @@
 		class={status && status !== "HOLD" ? "not-active" : ""}
 		onclick={() => handleStatusClick("HOLD")}
 		use:tooltip={{
-			text: toUnderstandableStatus("HOLD", isForGame),
+			text: toUnderstandableStatus("HOLD"),
 			pos: "top",
 		}}
 	>
@@ -63,7 +62,7 @@
 		class={status && status !== "DROPPED" ? "not-active" : ""}
 		onclick={() => handleStatusClick("DROPPED")}
 		use:tooltip={{
-			text: toUnderstandableStatus("DROPPED", isForGame),
+			text: toUnderstandableStatus("DROPPED"),
 			pos: "top",
 		}}
 	>

@@ -292,7 +292,8 @@
 			// eslint-disable-next-line @typescript-eslint/no-explicit-any
 			const jsonData = JSON.parse(fileText) as any[];
 			let invalidStructureErrorOccurred = false;
-			let processedGame = false;
+			// Games aren't supported, entries for them are skipped.
+			let skippedGames = 0;
 			for (const v of jsonData) {
 				const t: ImportedList = {
 					rating: v.rating,
@@ -309,11 +310,8 @@
 					t.year = new Date(v.content.release_date)?.getFullYear();
 					t.type = v.content.type;
 				} else if (v.game) {
-					t.igdbId = v.game.igdbId;
-					t.name = v.game.name;
-					t.year = new Date(v.game.releaseDate)?.getFullYear();
-					t.type = "game";
-					processedGame = true;
+					skippedGames++;
+					continue;
 				} else {
 					console.error("processWatcharrFile: Went over invalid item.", v);
 					if (!invalidStructureErrorOccurred) {
@@ -328,21 +326,12 @@
 				}
 				toImport.push(t);
 			}
-			if (processedGame && !store.serverFeatures?.games) {
-				// We know the server hasnt told us it supports games yet
-				// for this session, so alert the user of this before they start
-				// importing.
+			if (skippedGames > 0) {
 				notify({
 					type: "error",
-					text:
-						"It looks like this server doesn't support 'Games'! " +
-						"The server should be configured properly before " +
-						"proceeding otherwise none of your games will be imported!",
-					time: Infinity,
+					text: `Skipped ${skippedGames} game(s), only movies and shows can be imported.`,
+					time: 10000,
 				});
-				// We still allow the user to continue (BECAUSE EIN CUSTOMER ISH ALWAYS REIGHT!!!!
-				// or maybe they don't care about games, or maybe they configured
-				// it in another tab and know for a fact that it should work.)
 			}
 			console.log("toImport:", toImport);
 			store.importedList = {

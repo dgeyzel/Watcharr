@@ -13,6 +13,13 @@ test.describe("admin", () => {
 		}
 		// Only The Matrix is hidden.
 		await expect(page.locator(".hidden-badge")).toHaveCount(1);
+		// No social or user management features.
+		await expect(page.locator("button.following")).toHaveCount(0);
+		await page.locator("button.face").click();
+		await expect(page.getByRole("button", { name: "Users" })).toHaveCount(0);
+		await expect(page.getByRole("button", { name: "Share List" })).toHaveCount(
+			0,
+		);
 	});
 
 	test("can hide and unhide a title from visitors", async ({
