@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/sbondCo/Watcharr/domain"
+	"github.com/sbondCo/Watcharr/util"
 )
 
 // Perform "special"  direct search if possible using search query.
@@ -125,19 +126,19 @@ func (s *Service) getExtProviderFromURL(maybeaurl string) (string, string) {
 		return "", ""
 	}
 
-	hostLower := strings.ToLower(u.Host)
 	slog.Debug("getExtProviderFromURL: Looks like a url.",
-		"host", hostLower,
+		"host", u.Host,
 		"path", u.Path)
 
-	// Using HasSuffix so for ex: www.imdb.com AND imdb.com will match.
-	if strings.HasSuffix(hostLower, "imdb.com") {
+	// Strict host matching: exact domain or a real subdomain (www., m.),
+	// never lookalikes such as fakeimdb.com or imdb.com.evil.net.
+	if util.HostMatchesDomain(u.Host, "imdb.com") {
 		return s.getExtProviderIDFromIMDBURL(u)
-	} else if strings.HasSuffix(hostLower, "themoviedb.org") {
+	} else if util.HostMatchesDomain(u.Host, "themoviedb.org") {
 		return s.getExtProviderIDFromTMDBURL(u)
 	}
 
-	return "", " "
+	return "", ""
 }
 
 // Extract id from IMDB url.
