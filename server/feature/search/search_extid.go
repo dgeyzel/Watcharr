@@ -35,14 +35,6 @@ func (s *Service) searchExtProviderById(
 		if err := s.searchTvById(providerID, resp); err == nil {
 			return true
 		}
-	case "igdb":
-		if err := s.searchGameById(providerID, resp); err == nil {
-			return true
-		}
-	case "igdb-slug":
-		if err := s.searchGameBySlug(providerID, resp); err == nil {
-			return true
-		}
 	default:
 		// By default, if provider name isn't caught in above cases, just send
 		// it to tmdb external id search.
@@ -94,8 +86,7 @@ func (s *Service) getExtProviderFromQuery(queryLower string) (string, string) {
 
 	switch querySplit[0] {
 	case "movie", // TMDB ID target
-		"tv",   // TMDB ID target
-		"igdb", // IGDB ID target
+		"tv", // TMDB ID target
 		// The rest below are sent as is to tmdbs find by (external) id api.
 		"imdb",
 		"tvdb",
@@ -107,18 +98,14 @@ func (s *Service) getExtProviderFromQuery(queryLower string) (string, string) {
 		"tiktok":
 		provider = querySplit[0]
 		// Any aliases we want to support
-	case "i":
-	case "imd":
+	case "i", "imd":
 		provider = "imdb"
-	case "wd":
-	case "wdt":
+	case "wd", "wdt":
 		provider = "wikidata"
 	case "yt":
 		provider = "youtube"
 	case "thetvdb":
 		provider = "tvdb"
-	case "game":
-		provider = "igdb"
 	case "series":
 		provider = "tv"
 	default:
@@ -148,8 +135,6 @@ func (s *Service) getExtProviderFromURL(maybeaurl string) (string, string) {
 		return s.getExtProviderIDFromIMDBURL(u)
 	} else if strings.HasSuffix(hostLower, "themoviedb.org") {
 		return s.getExtProviderIDFromTMDBURL(u)
-	} else if strings.HasSuffix(hostLower, "igdb.com") {
-		return s.getExtProviderIDFromIGDBURL(u)
 	}
 
 	return "", " "
@@ -212,27 +197,4 @@ func (s *Service) getExtProviderIDFromTMDBURL(u *url.URL) (string, string) {
 	}
 
 	return segments[0], segs2[0]
-}
-
-// Extract slug from IGDB url.
-// Returns (Provider, ProviderID).
-func (s *Service) getExtProviderIDFromIGDBURL(u *url.URL) (string, string) {
-	segments := strings.Split(
-		// Trim start/end '/' to avoid empty items at start/end
-		// of final slice.
-		strings.Trim(u.Path, "/"),
-		"/",
-	)
-	segmentsLen := len(segments)
-	slog.Debug("getExtProviderIDFromIMDBURL: Parsing path.",
-		"segments", segments,
-		"segments_len", segmentsLen)
-
-	if segmentsLen < 2 ||
-		segments[0] != "games" {
-		slog.Debug("getExtProviderIDFromIMDBURL: path provided not supported.")
-		return "", ""
-	}
-
-	return "igdb-slug", segments[1]
 }

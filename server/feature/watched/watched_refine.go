@@ -28,8 +28,6 @@ func refineFilterType(db *gorm.DB, ft []util.SupportedMedia) {
 		case util.SupportedMediaShow:
 			qstr = append(qstr, "Content.type = ?")
 			astr = append(astr, "tv")
-		case util.SupportedMediaGame:
-			qstr = append(qstr, "watcheds.game_id IS NOT NULL")
 		}
 	}
 	q := strings.Join(qstr, " OR ")
@@ -133,12 +131,12 @@ func refineSort(
 		db.Order(obc(clause.Column{Name: "watcheds.rating"}))
 	case domain.WatchedSortAlphabetical:
 		db.Order(obc(clause.Column{
-			Name: "COALESCE(`Content`.`title`, `Game`.`name`)",
+			Name: "`Content`.`title`",
 			Raw:  true,
 		}))
 	case domain.WatchedSortDateReleased:
 		db.Order(obc(clause.Column{
-			Name: "COALESCE(`Content`.`release_date`, `Game`.`release_date`)",
+			Name: "`Content`.`release_date`",
 			Raw:  true,
 		}))
 	}

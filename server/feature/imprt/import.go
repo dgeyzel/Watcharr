@@ -108,14 +108,6 @@ func (s *Service) ImportContent(
 		// If ErrNoResult then we allow going below to search by name.
 	}
 
-	// If igdb provided, go straight to SuccessfulImport with it.
-	if ar.IgdbID != 0 && (ar.Type == domain.ImportContentTypeGame) {
-		return s.SuccessfulImport(userId, &ar, domain.SuccessfulImportProps{
-			IgdbID:      ar.IgdbID,
-			ContentType: util.SupportedMediaGame,
-		}), nil
-	}
-
 	// If we have no IDs, run importWithName, which searches for content
 	// by name.
 	return s.importWithName(userId, &ar)
@@ -150,8 +142,6 @@ func (s *Service) SuccessfulImport(
 	switch props.ContentType {
 	case util.SupportedMediaMovie, util.SupportedMediaShow:
 		wAddReq.TMDBID = props.TmdbID
-	case util.SupportedMediaGame:
-		wAddReq.IGDBID = props.IgdbID
 	default:
 		slog.Error("successfulImport: Invalid contentType provided!",
 			"content_type", props.ContentType)

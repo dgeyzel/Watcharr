@@ -2,7 +2,6 @@ package user
 
 import (
 	"net/http"
-	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/sbondCo/Watcharr/database/entity"
@@ -12,16 +11,14 @@ import (
 )
 
 type Router struct {
-	br            *router.BaseRouter
-	service       *Service
-	manageService *ManageService
+	br      *router.BaseRouter
+	service *Service
 }
 
-func NewRouter(br *router.BaseRouter, service *Service, manageService *ManageService) *Router {
+func NewRouter(br *router.BaseRouter, service *Service) *Router {
 	return &Router{
 		br,
 		service,
-		manageService,
 	}
 }
 
@@ -34,10 +31,6 @@ func (r *Router) AddRoutes() {
 	u.POST("/update", r.UpdateSettings)
 	// Get current user setting
 	u.GET("/settings", r.GetSettings)
-	// Search users
-	u.GET("/search", r.GetSearchUsers)
-	// Get user public info
-	u.GET("/public/:pubUserId/:pubUsername", r.GetUserPublicInfo)
 	// Update bio
 	u.POST("/bio", r.UpdateBio)
 	// Upload avatar
@@ -76,37 +69,6 @@ func (r *Router) UpdateSettings(c *gin.Context) {
 func (r *Router) GetSettings(c *gin.Context) {
 	userId := c.MustGet("userId").(uint)
 	response, err := r.service.UserGetSettings(userId)
-	if err != nil {
-		c.JSON(http.StatusForbidden, router.ErrorResponse{Error: err.Error()})
-		return
-	}
-	c.JSON(http.StatusOK, response)
-}
-
-// Search users
-func (r *Router) GetSearchUsers(c *gin.Context) {
-	userId := c.MustGet("userId").(uint)
-	query := c.Query("q")
-	if query == "" {
-		c.JSON(http.StatusBadRequest, router.ErrorResponse{Error: "a query was not provided"})
-		return
-	}
-	response, err := r.service.UserSearch(userId, query)
-	if err != nil {
-		c.JSON(http.StatusForbidden, router.ErrorResponse{Error: err.Error()})
-		return
-	}
-	c.JSON(http.StatusOK, response)
-}
-
-// Get user public info
-func (r *Router) GetUserPublicInfo(c *gin.Context) {
-	id, err := strconv.Atoi(c.Param("pubUserId"))
-	if err != nil {
-		c.Status(400)
-		return
-	}
-	response, err := r.service.GetUserPublicInfo(uint(id), c.Param("pubUsername"))
 	if err != nil {
 		c.JSON(http.StatusForbidden, router.ErrorResponse{Error: err.Error()})
 		return

@@ -84,17 +84,6 @@ func (s *Service) UserGetSettings(userId uint) (entity.UserSettings, error) {
 	}, nil
 }
 
-func (s *Service) UserSearch(currentUsersId uint, q string) ([]entity.PublicUser, error) {
-	slog.Debug("user search request running", "query", q)
-	users := new([]entity.PublicUser)
-	res := s.db.Where("private = 0 AND username LIKE ? AND id != ?", "%"+q+"%", currentUsersId).Table("users").Find(&users)
-	if res.Error != nil {
-		slog.Error("user search failed", "error", res.Error)
-		return []entity.PublicUser{}, errors.New("failed to find users")
-	}
-	return *users, nil
-}
-
 func (s *Service) GetUserInfo(currentUsersId uint) (entity.PrivateUser, error) {
 	slog.Debug("user get info request running")
 	user := new(entity.PrivateUser)
@@ -102,18 +91,6 @@ func (s *Service) GetUserInfo(currentUsersId uint) (entity.PrivateUser, error) {
 	if res.Error != nil {
 		slog.Error("user get info failed", "error", res.Error)
 		return entity.PrivateUser{}, errors.New("failed to find current user")
-	}
-	return *user, nil
-}
-
-// For getting a public user's info, when viewing their list for example
-func (s *Service) GetUserPublicInfo(userId uint, username string) (entity.PublicUser, error) {
-	slog.Debug("user get info request running")
-	user := new(entity.PublicUser)
-	res := s.db.Where("private = 0 AND id = ? AND username = ?", userId, username).Table("users").Preload("Avatar").Take(&user)
-	if res.Error != nil {
-		slog.Error("public user get info failed", "error", res.Error)
-		return entity.PublicUser{}, errors.New("failed to find user")
 	}
 	return *user, nil
 }

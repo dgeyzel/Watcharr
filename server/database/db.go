@@ -61,7 +61,6 @@ func Setup(db *gorm.DB) error {
 		&entity.WatchedEpisode{},
 		&entity.Activity{},
 		&entity.Token{},
-		&entity.Follow{},
 		&entity.Image{},
 		&entity.Game{},
 		&entity.ArrRequest{},

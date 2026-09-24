@@ -14,7 +14,6 @@ const (
 	ImportContentTypeMovie       ImportContentType = "movie"
 	ImportContentTypeShow        ImportContentType = "tv"
 	ImportContentTypeShowEpisode ImportContentType = "tv_episode"
-	ImportContentTypeGame        ImportContentType = "game"
 )
 
 func ImportContentTypeToSearchType(t ImportContentType) SearchType {
@@ -23,8 +22,6 @@ func ImportContentTypeToSearchType(t ImportContentType) SearchType {
 		return SearchTypeMovie
 	case ImportContentTypeShow:
 		return SearchTypeShow
-	case ImportContentTypeGame:
-		return SearchTypeGame
 	}
 	// Empty string should be caught as an error.
 	return ""
@@ -48,7 +45,6 @@ var (
 type ImportRequest struct {
 	TmdbID int    `json:"tmdbId"`
 	ImdbID string `json:"imdbId"`
-	IgdbID int    `json:"igdbId"`
 
 	Name             string                  `json:"name"`
 	Year             int                     `json:"year"`
@@ -67,7 +63,6 @@ type ImportRequest struct {
 // Internal struct given to the SuccessfulImport function.
 type SuccessfulImportProps struct {
 	TmdbID      int
-	IgdbID      int
 	ContentType util.SupportedMedia
 }
 
@@ -76,8 +71,6 @@ func NewSuccessfulImportPropsFromMedia(m *Media) (SuccessfulImportProps, error) 
 	switch p.ContentType {
 	case util.SupportedMediaMovie, util.SupportedMediaShow:
 		p.TmdbID = m.IDs.TMDB
-	case util.SupportedMediaGame:
-		p.IgdbID = m.IDs.IGDB
 	default:
 		return p, errors.New("unsupported content type on media")
 	}

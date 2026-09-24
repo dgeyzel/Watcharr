@@ -29,7 +29,6 @@ func (r *Router) AddRoutes() {
 	watched := r.br.Router.Group("/watched").Use(authmiddleware.AuthRequired(nil, r.br.Cfg))
 
 	watched.GET("", router.PaginatedRequest(false), r.GetWatchedList)
-	watched.GET(":id/:username", router.PaginatedRequest(true), r.GetPublicWatchedList)
 	watched.POST("", r.AddWatched)
 	watched.PUT(":id", r.UpdateWatched)
 	watched.DELETE(":id", r.DeleteWatched)
@@ -74,38 +73,6 @@ func (r *Router) GetWatchedList(c *gin.Context) {
 	} else {
 		c.JSON(http.StatusForbidden, router.ErrorResponse{Error: "failed"})
 	}
-}
-
-// Get another users watched list (if its public).
-func (r *Router) GetPublicWatchedList(c *gin.Context) {
-	pp := c.MustGet("paginationParams").(util.PaginationParams)
-	wpr := domain.WatchedGetPageRequest{
-		// Defaults..
-		Sort:    domain.WatchedSortDateAdded,
-		SortDir: domain.WatchedSortDirAsc,
-	}
-	if err := c.ShouldBind(&wpr); err != nil {
-		c.JSON(http.StatusBadRequest, router.ErrorResponse{Error: "failed to get request parameters"})
-		return
-	}
-	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
-	if err != nil {
-		slog.Error("getPublicWatched route failed to convert id param to uint", "id", id)
-		c.Status(400)
-		return
-	}
-	wp, err := r.s.getPublicWatched(uint(id), c.Param("username"), pp, wpr)
-	if err != nil {
-		c.JSON(http.StatusForbidden, router.ErrorResponse{Error: err.Error()})
-		return
-	}
-	dto := util.PaginationResponse[domain.Media, util.None]{
-		PaginationParams: wp.PaginationParams,
-		TotalPages:       wp.TotalPages,
-		TotalResults:     wp.TotalResults,
-		Results:          domain.NewWatchedPublicGetPageResponse(wp.Results),
-	}
-	c.JSON(http.StatusOK, dto)
 }
 
 func (r *Router) AddWatched(c *gin.Context) {

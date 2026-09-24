@@ -119,18 +119,6 @@ func NewWatchedDtoForLists(w *entity.Watched) WatchedDto {
 	return dto
 }
 
-// For public lists showing other users watched data.
-func NewWatchedDtoForPublicLists(w *entity.Watched) WatchedDto {
-	dto := NewWatchedDtoWithBaseProps(w)
-
-	if w.Content != nil && w.Content.Type == entity.SHOW {
-		dto.WatchingSeason = watchedutil.GetLatestWatchedInTv(
-			w.WatchedSeasons, w.WatchedEpisodes)
-	}
-
-	return dto
-}
-
 // A fuller dto with all details needed for a content details page.
 func NewWatchedDtoForContentPage(w *entity.Watched) WatchedDto {
 	dto := NewWatchedDtoWithBaseProps(w)
@@ -160,23 +148,10 @@ func NewWatchedGetPageResponse(w []entity.Watched) WatchedGetPageResponse {
 	return r
 }
 
-// Get a public users list response.
-type WatchedPublicGetPageResponse []Media
-
-func NewWatchedPublicGetPageResponse(w []entity.Watched) WatchedPublicGetPageResponse {
-	r := WatchedPublicGetPageResponse{}
-	for i := range w {
-		v := &w[i]
-		d := NewWatchedDtoForPublicLists(v)
-		r = append(r, NewMediaFromWatched(v, &d))
-	}
-	return r
-}
-
 // Add a watched entry request
 type WatchedAddRequest struct {
 	// Type of content we are adding to watched.
-	ContentType util.SupportedMedia `json:"contentType" binding:"required,oneof=movie tv game"`
+	ContentType util.SupportedMedia `json:"contentType" binding:"required,oneof=movie tv"`
 	// ID of content from tmdb (if ContentType is movie or tv).
 	TMDBID int `json:"tmdbId"`
 	// DEPRECATED!! This will be removed soon, I've left it in only so any third
@@ -184,8 +159,6 @@ type WatchedAddRequest struct {
 	// the id for `tmdbId`, please replace 'contentId' properties in requests
 	// with `tmdbId`.
 	Deprecated_ContentID int `json:"contentId"`
-	// ID of content from igdb (if ContentType is game).
-	IGDBID int `json:"igdbId"`
 
 	Status   entity.WatchedStatus `json:"status"`
 	Rating   float64              `json:"rating" binding:"max=10"`

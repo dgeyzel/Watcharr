@@ -58,11 +58,9 @@ func AddList[S Addable](
 	if ws, err := wp.GetWatchedItemsBySupportedMediaIds(userId, contentIdAndTypePairs); err == nil {
 		for _, v := range ws {
 			for i, vv := range s {
-				if
-				// IF is content
-				(vv.GetMediaType() == v.Content.GetTypeSupportedMedia() && v.Content != nil && vv.GetId() == v.Content.TmdbID) ||
-					// If is game
-					(vv.GetMediaType() == util.SupportedMediaGame && v.Game != nil && vv.GetId() == v.Game.IgdbID) {
+				if v.Content != nil &&
+					vv.GetMediaType() == v.Content.GetTypeSupportedMedia() &&
+					vv.GetId() == v.Content.TmdbID {
 					addCb(i, &v)
 				}
 			}

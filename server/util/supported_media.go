@@ -7,5 +7,4 @@ type SupportedMedia string
 const (
 	SupportedMediaMovie SupportedMedia = "movie"
 	SupportedMediaShow  SupportedMedia = "tv"
-	SupportedMediaGame  SupportedMedia = "game"
 )

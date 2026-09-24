@@ -8,8 +8,6 @@ import (
 )
 
 type ServerStats struct {
-	Users            int64          `json:"users"`
-	PrivateUsers     int64          `json:"privateUsers"`
 	WatchedMovies    int64          `json:"watchedMovies"`
 	WatchedShows     int64          `json:"watchedShows"`
 	WatchedSeasons   int64          `json:"watchedSeasons"`
@@ -22,17 +20,8 @@ type ServerStats struct {
 // I cant sql so this the best yall gettin
 func getServerStats(db *gorm.DB) ServerStats {
 	stats := ServerStats{}
-	// User counts.
-	resp := db.
-		Model(&entity.User{}).
-		Count(&stats.Users).
-		Where("private = 1").
-		Count(&stats.PrivateUsers)
-	if resp.Error != nil {
-		slog.Error("getServerStats - Users query failed", "error", resp.Error)
-	}
 	// Watched seasons count.
-	resp = db.Model(&entity.WatchedSeason{}).Count(&stats.WatchedSeasons)
+	resp := db.Model(&entity.WatchedSeason{}).Count(&stats.WatchedSeasons)
 	if resp.Error != nil {
 		slog.Error("getServerStats - WatchedSeasons query failed", "error", resp.Error)
 	}

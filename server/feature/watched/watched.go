@@ -18,10 +18,6 @@ type ContentProvider interface {
 	GetOrCacheContent(contentType entity.ContentType, tmdbId int) (entity.Content, error)
 }
 
-type GameProvider interface {
-	GetOrCache(igdbID int) (entity.Game, error)
-}
-
 type UserProvider interface {
 	UserGetSettings(userId uint) (entity.UserSettings, error)
 }
@@ -29,7 +25,6 @@ type UserProvider interface {
 type Service struct {
 	db               *gorm.DB
 	cp               ContentProvider
-	gameProvider     GameProvider
 	activityProvider domain.ActivityAddProvider
 	userProvider     UserProvider
 }
@@ -37,14 +32,12 @@ type Service struct {
 func NewService(
 	db *gorm.DB,
 	cp ContentProvider,
-	gameProvider GameProvider,
 	activityProvider domain.ActivityAddProvider,
 	userProvider UserProvider,
 ) *Service {
 	return &Service{
 		db,
 		cp,
-		gameProvider,
 		activityProvider,
 		userProvider,
 	}
@@ -55,8 +48,6 @@ func (s *Service) getWatched(userId uint) ([]entity.Watched, error) {
 	watched := new([]entity.Watched)
 	res := s.db.Model(&entity.Watched{}).
 		Preload("Content").
-		Preload("Game").
-		Preload("Game.Poster").
 		Preload("Activity").
 		Preload("WatchedSeasons").
 		Preload("WatchedEpisodes").
@@ -104,14 +95,12 @@ func (s *Service) GetWatchedPage(
 		// Search query
 		if extraProps.Query != "" {
 			q := "%" + extraProps.Query + "%"
-			res = res.Where("Content.Title LIKE ? OR Game.Name LIKE ?", q, q)
+			res = res.Where("Content.Title LIKE ?", q)
 		}
 	}
 
 	res = res.
 		Joins("Content").
-		Joins("Game").
-		Preload("Game.Poster").
 		Preload("Tags").
 		Preload("WatchedSeasons").
 		Preload("WatchedEpisodes").
@@ -131,67 +120,6 @@ func (s *Service) GetWatchedPage(
 	if res.Error != nil {
 		slog.Error("GetWatchedPage: Failed!", "error", res.Error)
 		return util.PaginationResponse[entity.Watched, util.None]{}, res.Error
-	}
-	pRes.Results = *watched
-	pRes.Finished(pp)
-	return *pRes, nil
-}
-
-// Get a users **public** watchlist.
-func (s *Service) getPublicWatched(
-	userId uint,
-	username string,
-	pp util.PaginationParams,
-	wr domain.WatchedGetPageRequest,
-) (util.PaginationResponse[entity.Watched, util.None], error) {
-	slog.Debug("getPublicWatched: running",
-		"user_id", userId, "username", username)
-
-	// First we need to make sure the users list is public
-	user := new(entity.User)
-	// I figure we require knowlege of the users id and name to make it
-	// harder to just type in random ids and see someones list.. dunno
-	// if this is a thing we need but its here.. for now at least.
-	res := s.db.
-		Where("id = ? AND username = ?", userId, username).
-		Take(&user)
-	if res.Error != nil {
-		slog.Error("getPublicWatched: Failed to get user.",
-			"user_id", userId)
-		return util.PaginationResponse[entity.Watched, util.None]{}, errors.New("failed to check privacy settings")
-	}
-	if user.Private != nil && *user.Private {
-		slog.Error("getPublicWatched: This users list is private.",
-			"user_id", userId)
-		return util.PaginationResponse[entity.Watched, util.None]{}, errors.New("this watched list is private")
-	}
-
-	// Now we know the user is public, return their list
-	watched := new([]entity.Watched)
-	pRes := &util.PaginationResponse[entity.Watched, util.None]{}
-	res = s.db.
-		Model(&entity.Watched{}).
-		Where(&entity.Watched{UserID: userId}).
-		Joins("Content").
-		Joins("Game").
-		Preload("Game.Poster").
-		Preload("Tags").
-		Preload("WatchedSeasons").
-		Preload("WatchedEpisodes").
-		// Apply filters first.
-		Scopes(watchedRefineFilter(wr, nil)).
-		// Then count results (after filter);
-		Count(&pRes.TotalResults).
-		// Now calculate pagination properties with a TotalResults
-		// that takes filtered out items into account.
-		Scopes(util.Paginate(pp, pRes)).
-		// Sort options.
-		// Note: See note above in GetWatchedPage.
-		Scopes(watchedRefineSort(wr, userId)).
-		Find(&watched)
-	if res.Error != nil {
-		slog.Error("getPublicWatched: Failed!", "error", res.Error)
-		return util.PaginationResponse[entity.Watched, util.None]{}, errors.New("failed fetching the list")
 	}
 	pRes.Results = *watched
 	pRes.Finished(pp)
@@ -260,56 +188,9 @@ func (s *Service) GetWatchedItemsByTmdbIds(userId uint, c [][]any) ([]entity.Wat
 	return *watched, nil
 }
 
-// Get a watched list item by game (igdb) id (must be for `userId`).
-func (s *Service) GetWatchedItemByIgdbId(userId uint, igdbId uint) (entity.Watched, error) {
-	slog.Debug("getWatchedItemByIgdbId: Running.", "userId", userId, "igdbId", igdbId)
-	watched := new(entity.Watched)
-	res := s.db.Model(&entity.Watched{}).
-		Joins("Game").
-		Preload("Game.Poster").
-		Preload("Activity").
-		Preload("Tags").
-		Where("user_id = ? AND Game.igdb_id = ?", userId, igdbId).
-		Take(&watched)
-	if res.Error != nil {
-		slog.Error("getWatchedItemByIgdbId: Failed!", "error", res.Error)
-		return entity.Watched{}, res.Error
-	}
-	slog.Debug("getWatchedItemByIgdbId: Done.", "userId", userId, "igdbId", igdbId, "watched_item", watched)
-	return *watched, nil
-}
-
-// Same as `getWatchedItemByIgdbId` except for getting in bulk (multiple content ids).
-// `c` should be a slice of igdb ids.
-func (s *Service) GetWatchedItemsByIgdbIds(userId uint, c []int) ([]entity.Watched, error) {
-	slog.Debug("getWatchedItemsByIgdbIds: Running.", "userId", userId, "c", c)
-	watched := new([]entity.Watched)
-	res := s.db.Model(&entity.Watched{}).
-		Joins("Game").
-		Preload("Game.Poster").
-		Preload("Activity").
-		Preload("Tags").
-		Where("user_id = ?", userId).
-		Where("(Game.igdb_id) IN ?", c).
-		Find(&watched)
-	if res.Error != nil {
-		slog.Error("getWatchedItemsByIgdbIds: Failed!", "error", res.Error)
-		return []entity.Watched{}, res.Error
-	}
-	slog.Debug(
-		"getWatchedItemsByIgdbIds: Done.",
-		"userId", userId,
-		"watcheds_found", len(*watched),
-		// "wdev", *watched,
-	)
-	return *watched, nil
-}
-
 // Get watched item by an id and SupportedMedia type.
 func (s *Service) GetWatchedItemBySupportedMediaId(userId uint, id uint, t util.SupportedMedia) (entity.Watched, error) {
 	switch t {
-	case util.SupportedMediaGame:
-		return s.GetWatchedItemByIgdbId(userId, id)
 	case util.SupportedMediaMovie:
 		return s.GetWatchedItemByTmdbId(userId, id, entity.MOVIE)
 	case util.SupportedMediaShow:
@@ -325,15 +206,12 @@ func (s *Service) GetWatchedItemsBySupportedMediaIds(userId uint, c []addedtocon
 	slog.Debug("GetWatchedItemsBySupportedMediaIds: Running.", "userId", userId, "c", c)
 	// First we want to separate `c` into slices we can pass to the respective functions.
 	tmdbIds := [][]any{}
-	igdbIds := []int{}
 	for _, v := range c {
 		switch v.Type {
 		case util.SupportedMediaMovie:
 			tmdbIds = append(tmdbIds, []any{v.Id, entity.MOVIE})
 		case util.SupportedMediaShow:
 			tmdbIds = append(tmdbIds, []any{v.Id, entity.SHOW})
-		case util.SupportedMediaGame:
-			igdbIds = append(igdbIds, v.Id)
 		}
 	}
 	// Now call each function relating to an overarching type.
@@ -343,14 +221,6 @@ func (s *Service) GetWatchedItemsBySupportedMediaIds(userId uint, c []addedtocon
 			watcheds = append(watcheds, w...)
 		} else {
 			slog.Error("GetWatchedItemsBySupportedMediaIds: Failed to get items by tmdb ids.", "error", err)
-			return []entity.Watched{}, err
-		}
-	}
-	if len(igdbIds) > 0 {
-		if w, err := s.GetWatchedItemsByIgdbIds(userId, igdbIds); err == nil {
-			watcheds = append(watcheds, w...)
-		} else {
-			slog.Error("GetWatchedItemsBySupportedMediaIds: Failed to get items by igdb ids.", "error", err)
 			return []entity.Watched{}, err
 		}
 	}
@@ -403,19 +273,6 @@ func (s *Service) AddWatched(
 		}
 		// Add content to watched entry
 		watched.ContentID = &content.ID
-	case "game":
-		if ar.IGDBID == 0 {
-			return entity.Watched{}, errors.New("missing igdb id")
-		}
-		game, err := s.gameProvider.GetOrCache(ar.IGDBID)
-		if err != nil {
-			return entity.Watched{}, err
-		}
-		// Error if content has no id
-		if game.ID == 0 {
-			return entity.Watched{}, errors.New("failed to find game by id")
-		}
-		watched.GameID = &game.ID
 	default:
 		return entity.Watched{}, errors.New("invalid content type provided")
 	}
@@ -423,7 +280,7 @@ func (s *Service) AddWatched(
 	// Set default status for when content is added by
 	// rating it instead of giving status first.
 	if ar.Status == "" {
-		if ar.ContentType == "movie" || ar.ContentType == "game" {
+		if ar.ContentType == "movie" {
 			ar.Status = entity.FINISHED
 		} else {
 			ar.Status = entity.WATCHING
@@ -515,7 +372,7 @@ func (s *Service) restoreWatchedAfterDuplicatedKeyErr(
 		"user_id", userId)
 
 	// Our base where statement to find the row we want to restore by unique
-	// indexes (user_id AND (content_id or game_id)).
+	// indexes (user_id AND content_id).
 	whereStmt := entity.Watched{
 		UserID: userId,
 	}
@@ -525,11 +382,9 @@ func (s *Service) restoreWatchedAfterDuplicatedKeyErr(
 	if whereStmt.UserID == 0 {
 		return errors.New("no userid in provided watched struct")
 	}
-	// ...AND a (contentId || gameId).
+	// ...AND a contentId.
 	if watchedOut.ContentID != nil && *watchedOut.ContentID != 0 {
 		whereStmt.ContentID = watchedOut.ContentID
-	} else if watchedOut.GameID != nil && *watchedOut.GameID != 0 {
-		whereStmt.GameID = watchedOut.GameID
 	} else {
 		return errors.New("no supported media ids in provided watched struct")
 	}

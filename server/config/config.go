@@ -7,10 +7,8 @@ import (
 	"log/slog"
 	"os"
 	"path"
-	"time"
 
 	"github.com/sbondCo/Watcharr/logging"
-	"github.com/sbondCo/Watcharr/media/igdb"
 	"github.com/sbondCo/Watcharr/util"
 )
 
@@ -25,7 +23,7 @@ var DataPath = func() string {
 // ServerConfig is read from `watcharr.json` in the data dir.
 //
 // Keys removed in this fork (JELLYFIN_HOST, USE_EMBY, SIGNUP_ENABLED,
-// PLEX_HOST, PLEX_MACHINE_ID, HEADER_AUTH, SONARR, RADARR) may still exist
+// PLEX_HOST, PLEX_MACHINE_ID, HEADER_AUTH, SONARR, RADARR, TWITCH) may still exist
 // in old config files, they are ignored when read and dropped on next write.
 type ServerConfig struct {
 	// Used to sign JWT tokens. Make sure to make
@@ -56,8 +54,6 @@ type ServerConfig struct {
 	// ip for rate limiting. When empty, the direct connection ip is used.
 	TRUSTED_PROXIES []string `json:",omitempty"`
 
-	TWITCH igdb.IGDB `json:",omitzero"`
-
 	// Optional: Schedule for tasks.
 	TASK_SCHEDULE map[string]int `json:",omitempty"`
 
@@ -79,10 +75,6 @@ func (c *ServerConfig) GetSafe() ServerConfig {
 		DEFAULT_COUNTRY: c.DEFAULT_COUNTRY,
 		TMDB_KEY:        c.TMDB_KEY,
 		DEBUG:           c.DEBUG,
-		TWITCH: igdb.IGDB{
-			ClientID:     c.TWITCH.ClientID,
-			ClientSecret: c.TWITCH.ClientSecret,
-		}, // Dont act safe, this contains twitch secrets, needed for config
 	}
 }
 
@@ -165,39 +157,6 @@ func (c *ServerConfig) Write() error {
 		return err
 	}
 	return os.WriteFile(path.Join(DataPath, "watcharr.json"), barej, 0755)
-}
-
-func (c *ServerConfig) SaveTwitchConfig(newt igdb.IGDB) error {
-	// If existing client id and secret are same.. just return here
-	if (c.TWITCH.ClientID != nil && newt.ClientID != nil && c.TWITCH.ClientSecret != nil && newt.ClientSecret != nil) &&
-		*c.TWITCH.ClientID == *newt.ClientID && *c.TWITCH.ClientSecret == *newt.ClientSecret {
-		slog.Info("SaveTwitchConfig: New ClientID and ClientSecret match old ClientID and ClientSecret.. ignoring request to update.")
-		return nil
-	}
-	// Update our config
-	c.TWITCH.ClientID = newt.ClientID
-	c.TWITCH.ClientSecret = newt.ClientSecret
-	c.TWITCH.AccessToken = ""
-	c.TWITCH.AccessTokenExpires = time.Time{}
-	// Try to init again
-	err := c.TWITCH.Init()
-	if err != nil {
-		slog.Error("SaveTwitchConfig failed to initialize TWITCH", "error", err)
-		return errors.New("initialization with credentials failed")
-	}
-	err = c.Write()
-	if err != nil {
-		slog.Error("SaveTwitchConfig failed to write config", "error", err)
-		return errors.New("failed to save config")
-	}
-	return nil
-}
-
-func (c *ServerConfig) TwitchEnabled() bool {
-	if c.TWITCH.ClientID != nil && c.TWITCH.ClientSecret != nil {
-		return true
-	}
-	return false
 }
 
 // Read config file

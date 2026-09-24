@@ -11,7 +11,6 @@ import (
 	"github.com/sbondCo/Watcharr/config"
 	"github.com/sbondCo/Watcharr/database/entity"
 	"github.com/sbondCo/Watcharr/domain"
-	"github.com/sbondCo/Watcharr/media/igdb"
 	"github.com/sbondCo/Watcharr/media/tmdb"
 	"github.com/sbondCo/Watcharr/util"
 	"gorm.io/gorm"
@@ -81,10 +80,7 @@ func (s *Service) Search(
 			Page:  pp.Page,
 			Adult: qfilters.Adult,
 		}
-		greq := igdb.SearchOptions{
-			Query: query,
-		}
-		if err := s.searchMulti(sreq, greq, &resp); err != nil {
+		if err := s.searchMulti(sreq, &resp); err != nil {
 			return resp, errors.New("multi search failed")
 		}
 	case domain.SearchTypeMovie:
@@ -122,15 +118,6 @@ func (s *Service) Search(
 		if err := s.searchPeople(sreq, &resp); err != nil {
 			return resp, errors.New("person search failed")
 		}
-	case domain.SearchTypeGame:
-		greq := igdb.SearchOptions{
-			Query:       query,
-			Year:        qfilters.Year,
-			PrimaryYear: qfilters.FirstYear,
-		}
-		if err := s.searchGame(greq, &resp); err != nil {
-			return resp, errors.New("game search failed")
-		}
 	}
 	return resp, nil
 }
@@ -138,10 +125,9 @@ func (s *Service) Search(
 // TODO if only one of the requests for data fails, we can still return the data?
 // TODO but we'd need a way to tell the client that some data failed to get fetched,
 // TODO either with a header OR a result added to array of type error
-// SearchMulti is TMDB Multi search but with game data added to first page.
+// searchMulti is TMDB multi search.
 func (s *Service) searchMulti(
 	req tmdb.SearchUniversalOptions,
-	igdbReq igdb.SearchOptions,
 	resp *domain.SearchResponse,
 ) error {
 	slog.Debug("searchMulti: Running.", "req", req)
@@ -156,20 +142,6 @@ func (s *Service) searchMulti(
 			resp.Results,
 			v.AsMedia(),
 		)
-	}
-	// IGDB (we will only get results for the first page)
-	if req.Page == 1 && s.cfg.TwitchEnabled() {
-		igdbRes, err := s.cfg.TWITCH.Search(igdbReq)
-		if err != nil {
-			slog.Error("SearchMulti: Failed to search igdb!", "error", err)
-			return errors.New("content request failed")
-		}
-		for _, v := range igdbRes {
-			resp.Results = append(
-				resp.Results,
-				v.AsMedia(),
-			)
-		}
 	}
 	resp.Page = tmdbRes.Page
 	resp.TotalPages = tmdbRes.TotalPages
@@ -284,72 +256,6 @@ func (s *Service) searchPeople(
 	resp.Page = tmdbRes.Page
 	resp.TotalPages = tmdbRes.TotalPages
 	resp.TotalResults = int64(tmdbRes.TotalResults)
-	return nil
-}
-
-func (s *Service) searchGame(
-	req igdb.SearchOptions,
-	resp *domain.SearchResponse,
-) error {
-	slog.Debug("searchGame: Running.", "req", req)
-	igdbRes, err := s.cfg.TWITCH.Search(req)
-	if err != nil {
-		slog.Error("searchGame: Failed to search igdb!", "error", err)
-		return errors.New("content request failed")
-	}
-	for _, v := range igdbRes {
-		resp.Results = append(
-			resp.Results,
-			v.AsMedia(),
-		)
-	}
-	resp.Page = 1
-	resp.TotalPages = 1
-	resp.TotalResults = int64(len(igdbRes))
-	return nil
-}
-
-func (s *Service) searchGameById(
-	id string,
-	resp *domain.SearchResponse,
-) error {
-	slog.Debug("searchGameById: Running.", "id", id)
-	igdbRes, err := s.cfg.TWITCH.SearchById(id)
-	if err != nil {
-		slog.Error("searchGameById: Failed to search igdb!", "error", err)
-		return errors.New("content request failed")
-	}
-	for _, v := range igdbRes {
-		resp.Results = append(
-			resp.Results,
-			v.AsMedia(),
-		)
-	}
-	resp.Page = 1
-	resp.TotalPages = 1
-	resp.TotalResults = int64(len(igdbRes))
-	return nil
-}
-
-func (s *Service) searchGameBySlug(
-	slug string,
-	resp *domain.SearchResponse,
-) error {
-	slog.Debug("searchGameBySlug: Running.", "slug", slug)
-	igdbRes, err := s.cfg.TWITCH.SearchBySlug(slug)
-	if err != nil {
-		slog.Error("searchGameBySlug: Failed to search igdb!", "error", err)
-		return errors.New("content request failed")
-	}
-	for _, v := range igdbRes {
-		resp.Results = append(
-			resp.Results,
-			v.AsMedia(),
-		)
-	}
-	resp.Page = 1
-	resp.TotalPages = 1
-	resp.TotalResults = int64(len(igdbRes))
 	return nil
 }
 

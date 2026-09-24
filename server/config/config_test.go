@@ -26,6 +26,7 @@ func TestOldConfigWithRemovedKeysLoads(t *testing.T) {
 	"HEADER_AUTH": {"enabled": true, "headerName": "Remote-User", "autoLogin": true, "logoutUrl": "https://x"},
 	"SONARR": [{"name": "s", "host": "http://sonarr", "key": "k", "qualityProfile": 1, "rootFolder": 1, "languageProfile": 1, "automaticSearch": true}],
 	"RADARR": [{"name": "r", "host": "http://radarr", "key": "k", "qualityProfile": 1, "rootFolder": 1, "automaticSearch": true}],
+	"TWITCH": {"clientId": "id", "clientSecret": "secret"},
 	"DEBUG": true
 }`
 	if err := os.WriteFile(filepath.Join(DataPath, "watcharr.json"), []byte(oldCfg), 0600); err != nil {
@@ -44,7 +45,7 @@ func TestOldConfigWithRemovedKeysLoads(t *testing.T) {
 		t.Fatal(err)
 	}
 	b, _ := os.ReadFile(filepath.Join(DataPath, "watcharr.json"))
-	for _, k := range []string{"JELLYFIN_HOST", "SIGNUP_ENABLED", "PLEX_HOST", "HEADER_AUTH", "SONARR", "RADARR", "USE_EMBY"} {
+	for _, k := range []string{"JELLYFIN_HOST", "SIGNUP_ENABLED", "PLEX_HOST", "HEADER_AUTH", "SONARR", "RADARR", "USE_EMBY", "TWITCH"} {
 		if strings.Contains(string(b), k) {
 			t.Fatalf("removed key %s written back to config: %s", k, b)
 		}

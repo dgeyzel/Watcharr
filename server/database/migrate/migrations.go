@@ -134,4 +134,18 @@ var migrations = []Migration{
 			return nil
 		},
 	},
+	{
+		// Watcharr fork: follows (social feature) were removed, drop its table.
+		ID: "202609231200_0004",
+		Up: func(tx *gorm.DB) error {
+			migID := "202609231200_0004"
+			slog.Info("Migration is starting.", "mig", migID)
+			if err := tx.Exec("DROP TABLE IF EXISTS follows").Error; err != nil {
+				slog.Error("Dropping follows table failed!", "mig", migID, "error", err)
+				return err
+			}
+			slog.Info("Migration complete.", "mig", migID)
+			return nil
+		},
+	},
 }

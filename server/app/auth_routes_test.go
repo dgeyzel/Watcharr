@@ -29,6 +29,20 @@ func TestRemovedRoutesReturn404(t *testing.T) {
 		{http.MethodPost, "/api/arr/rad/add"},
 		{http.MethodGet, "/api/arr/request"},
 		{http.MethodPost, "/api/arr/request/approve/1"},
+		// Social features.
+		{http.MethodGet, "/api/follow"},
+		{http.MethodPost, "/api/follow/2"},
+		{http.MethodDelete, "/api/follow/2"},
+		{http.MethodGet, "/api/follow/thoughts/movie/550"},
+		{http.MethodGet, "/api/user/search"},
+		{http.MethodGet, "/api/user/public/1/admin"},
+		{http.MethodGet, "/api/watched/1/admin"},
+		{http.MethodGet, "/api/server/users"},
+		{http.MethodPost, "/api/server/users/1"},
+		// Games.
+		{http.MethodGet, "/api/game/1"},
+		{http.MethodPost, "/api/game/config"},
+		{http.MethodGet, "/api/features"},
 	}
 	for _, r := range removed {
 		// With and without a (admin) token, so no auth middleware masks it.

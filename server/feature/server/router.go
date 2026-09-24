@@ -1,30 +1,24 @@
 package server
 
 import (
-	"log/slog"
 	"net/http"
-	"strconv"
 	"time"
 
 	"github.com/gin-contrib/cache"
 	"github.com/gin-gonic/gin"
-	"github.com/sbondCo/Watcharr/domain"
 	"github.com/sbondCo/Watcharr/feature/auth/authmiddleware"
 	"github.com/sbondCo/Watcharr/router"
 )
 
 type Router struct {
-	br                 *router.BaseRouter
-	userManageProvider domain.UserManageProvider
+	br *router.BaseRouter
 }
 
 func NewRouter(
 	br *router.BaseRouter,
-	userManageProvider domain.UserManageProvider,
 ) *Router {
 	return &Router{
 		br,
-		userManageProvider,
 	}
 }
 
@@ -37,10 +31,6 @@ func (r *Router) AddRoutes() {
 	server.POST("/config", r.UpdateConfig)
 	// Get server stats
 	server.GET("/stats", cache.CachePage(r.br.MemStore, time.Minute*5, r.GetStats))
-	// Get all server users (for manage users page)
-	server.GET("/users", r.GetAllUsers)
-	// Edit a user (for manage users page)
-	server.POST("/users/:id", r.UpdateManageUser)
 }
 
 // Get server config (minus very sensitive fields, like JWT_SECRET)
@@ -79,36 +69,4 @@ func (r *Router) UpdateConfig(c *gin.Context) {
 // Get server stats
 func (r *Router) GetStats(c *gin.Context) {
 	c.JSON(http.StatusOK, getServerStats(r.br.DB))
-}
-
-// Get all server users (for manage users page)
-func (r *Router) GetAllUsers(c *gin.Context) {
-	resp, err := r.userManageProvider.GetAll()
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, router.ErrorResponse{Error: err.Error()})
-		return
-	}
-	c.JSON(http.StatusOK, resp)
-}
-
-// Edit a user (for manage users page)
-func (r *Router) UpdateManageUser(c *gin.Context) {
-	userId, err := strconv.ParseUint(c.Param("id"), 10, 64)
-	if err != nil {
-		slog.Error("/users/:id failed to parse id as a uint", "error", err)
-		c.JSON(http.StatusInternalServerError, router.ErrorResponse{Error: "failed to parse id"})
-		return
-	}
-	var ur domain.UpdateUserRequest
-	err = c.ShouldBindJSON(&ur)
-	if err == nil {
-		err := r.userManageProvider.Manage(uint(userId), ur)
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, router.ErrorResponse{Error: err.Error()})
-			return
-		}
-		c.Status(http.StatusOK)
-		return
-	}
-	c.AbortWithStatusJSON(http.StatusBadRequest, router.ErrorResponse{Error: err.Error()})
 }

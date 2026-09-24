@@ -16,8 +16,6 @@ const (
 	SearchTypeShow SearchType = "show"
 	// Search for a **person** (actor).
 	SearchTypePerson SearchType = "person"
-	// Search for a **game**.
-	SearchTypeGame SearchType = "game"
 )
 
 type SearchRequest struct {
@@ -47,8 +45,7 @@ var ValidSearchType validator.Func = func(fl validator.FieldLevel) bool {
 		case SearchTypeMulti,
 			SearchTypeMovie,
 			SearchTypeShow,
-			SearchTypePerson,
-			SearchTypeGame:
+			SearchTypePerson:
 			return true
 		}
 	}

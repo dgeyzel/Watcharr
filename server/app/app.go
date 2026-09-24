@@ -21,9 +21,6 @@ import (
 	"github.com/sbondCo/Watcharr/feature/auth"
 	"github.com/sbondCo/Watcharr/feature/content"
 	"github.com/sbondCo/Watcharr/feature/discover"
-	"github.com/sbondCo/Watcharr/feature/feature"
-	"github.com/sbondCo/Watcharr/feature/follow"
-	"github.com/sbondCo/Watcharr/feature/game"
 	"github.com/sbondCo/Watcharr/feature/img"
 	"github.com/sbondCo/Watcharr/feature/imprt"
 	"github.com/sbondCo/Watcharr/feature/job"
@@ -100,12 +97,9 @@ func NewEngine(db *gorm.DB, cfg *config.ServerConfig, opts Options) *gin.Engine 
 	authService := auth.NewService(db, cfg)
 	activityService := activity.NewService(db)
 	userService := user.NewService(db)
-	userManageService := user.NewManageService(db)
-	gameService := game.NewService(db, &br.Cfg.TWITCH, activityService)
 	watchedService := watched.NewService(
 		db,
 		contentService,
-		gameService,
 		activityService,
 		userService)
 	watchedSeasonService := season.NewService(db, activityService)
@@ -116,9 +110,7 @@ func NewEngine(db *gorm.DB, cfg *config.ServerConfig, opts Options) *gin.Engine 
 		tmdbService,
 		activityService,
 		userService)
-	featureService := feature.NewService(cfg)
 	profileService := profile.NewService(db)
-	followService := follow.NewService(db)
 	tagService := tag.NewService(db, watchedService)
 	searchService := search.NewService(db, br.Cfg, tmdbService, watchedService)
 	discoverService := discover.NewService(db, br.Cfg, tmdbService)
@@ -140,15 +132,12 @@ func NewEngine(db *gorm.DB, cfg *config.ServerConfig, opts Options) *gin.Engine 
 	episode.NewRouter(br, watchedEpisodeService).AddRoutes()
 	activity.NewRouter(br, activityService).AddRoutes()
 	profile.NewRouter(br, profileService).AddRoutes()
-	user.NewRouter(br, userService, userManageService).AddRoutes()
-	follow.NewRouter(br, followService).AddRoutes()
+	user.NewRouter(br, userService).AddRoutes()
 	imprt.NewRouter(br, importService, importTraktService).AddRoutes()
-	server.NewRouter(br, userManageService).AddRoutes()
-	feature.NewRouter(br, featureService).AddRoutes()
+	server.NewRouter(br).AddRoutes()
 	job.NewRouter(br).AddRoutes()
 	task.NewRouter(br).AddRoutes()
 	tag.NewRouter(br, tagService).AddRoutes()
-	game.NewRouter(br, gameService, watchedService).AddRoutes()
 	search.NewRouter(br, searchService, watchedService).AddRoutes()
 	discover.NewRouter(br, discoverService, watchedService).AddRoutes()
 	img.NewRouter(br).AddRoutes()

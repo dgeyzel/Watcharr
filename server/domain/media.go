@@ -1,4 +1,4 @@
-// Types that we can use for all content types (movie, tv, game, everything).
+// Types that we can use for all content types (movie, tv, everything).
 // Data responses to the client can use these "uniform" types to make access
 // easier.
 
@@ -18,8 +18,6 @@ const (
 	MediaTypeTMDBMovie  MediaType = "tmdb_movie"
 	MediaTypeTMDBShow   MediaType = "tmdb_tv"
 	MediaTypeTMDBPerson MediaType = "tmdb_person"
-
-	MediaTypeIGDBGame MediaType = "igdb_game"
 )
 
 type Media struct {
@@ -58,7 +56,7 @@ type Media struct {
 	Genres []MediaGenre `json:"genres,omitempty"`
 	// Media website.
 	Homepage string `json:"homepage,omitempty"`
-	// Media providers (eg Streaming sites, game markets)
+	// Media providers (eg Streaming sites)
 	Providers []MediaProvider `json:"providers,omitempty"`
 	// A link to the database we are using that lists all providers with max details.
 	// (especially for TMDB since it's data from JustWatch isn't available to us).
@@ -84,13 +82,6 @@ type Media struct {
 	// Last release date.
 	// Currently used for tv shows so frontend can display its end date.
 	ReleaseDateLast time.Time `json:"releaseDateLast,omitzero"`
-
-	//
-	// Properties only for Games
-	//
-
-	// Game modes.
-	GameModes []MediaGenre `json:"gameModes,omitempty"`
 }
 
 func (t Media) GetId() int {
@@ -98,8 +89,6 @@ func (t Media) GetId() int {
 	case MediaTypeTMDBMovie,
 		MediaTypeTMDBShow:
 		return t.IDs.TMDB
-	case MediaTypeIGDBGame:
-		return t.IDs.IGDB
 	}
 	return -99
 }
@@ -111,8 +100,6 @@ func (t Media) GetMediaType() util.SupportedMedia {
 		return util.SupportedMediaMovie
 	case MediaTypeTMDBShow:
 		return util.SupportedMediaShow
-	case MediaTypeIGDBGame:
-		return util.SupportedMediaGame
 	}
 	// Unsupported...
 	slog.Warn("GetMediaType: Requested, but unsupported type encountered.",
@@ -129,9 +116,6 @@ type MediaIDs struct {
 	IMDB     string `json:"imdb,omitempty"`
 	Wikidata string `json:"wikidata,omitempty"`
 	TVDB     int    `json:"tvdb,omitempty"`
-
-	// For igdb data
-	IGDB int `json:"igdb,omitempty"`
 }
 
 type MediaGenre struct {
@@ -158,8 +142,6 @@ func NewMediaFromWatched(w *entity.Watched, watchedDto *WatchedDto) Media {
 
 	if w.Content != nil {
 		media = NewMediaFromContent(w.Content)
-	} else if w.Game != nil {
-		media = NewMediaFromGame(w.Game)
 	}
 
 	media.Watched = *watchedDto
@@ -185,26 +167,6 @@ func NewMediaFromContent(c *entity.Content) Media {
 		m.Type = MediaTypeTMDBMovie
 	case entity.SHOW:
 		m.Type = MediaTypeTMDBShow
-	}
-	if c.ReleaseDate != nil {
-		m.ReleaseDate = *c.ReleaseDate
-	}
-	return m
-}
-
-// Converter for Game entity to Media
-func NewMediaFromGame(c *entity.Game) Media {
-	m := Media{
-		IDs: MediaIDs{
-			IGDB: c.IgdbID,
-		},
-		Type:          MediaTypeIGDBGame,
-		Name:          c.Name,
-		Summary:       c.Summary,
-		Poster:        c.Poster,
-		ExtPosterPath: c.CoverID,
-		Rating:        uint(c.Rating),
-		RatingCount:   uint(c.RatingCount),
 	}
 	if c.ReleaseDate != nil {
 		m.ReleaseDate = *c.ReleaseDate
