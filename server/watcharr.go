@@ -34,6 +34,10 @@ func main() {
 		}
 	}
 
+	if len(os.Args) > 1 && os.Args[1] == "reset-password" {
+		os.Exit(resetPasswordCmd(os.Args[2:], os.Stdin, os.Stdout, openDataDir))
+	}
+
 	multiw := logging.Setup(path.Join(config.DataPath, "watcharr.log"))
 	// Just a nice separator so when inspecting the log file I know when
 	// logs are for a new instance.

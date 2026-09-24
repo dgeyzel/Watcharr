@@ -77,3 +77,49 @@ func TestChangePasswordRequiresLongPassword(t *testing.T) {
 		t.Fatalf("valid change failed: %v", err)
 	}
 }
+
+func TestResetAdminPassword(t *testing.T) {
+	s := newService(t)
+	if _, err := s.ResetAdminPassword("", goodPassword); !errors.Is(err, ErrNoAdmin) {
+		t.Fatalf("no admin yet: %v", err)
+	}
+	if _, err := s.RegisterFirstUser(&UserRegisterRequest{Username: "owner", Password: goodPassword}); err != nil {
+		t.Fatal(err)
+	}
+	// A leftover non admin user is never picked.
+	s.db.Create(&entity.User{Username: "guest", Password: "x", Permissions: entity.PERM_NONE})
+
+	if _, err := s.ResetAdminPassword("", "short"); !errors.Is(err, ErrPasswordTooShort) {
+		t.Fatalf("short password: %v", err)
+	}
+	if _, err := s.ResetAdminPassword("guest", "another-long-password"); !errors.Is(err, ErrAdminNotFound) {
+		t.Fatalf("non admin username: %v", err)
+	}
+
+	const newPassword = "a-brand-new-password"
+	name, err := s.ResetAdminPassword("", newPassword)
+	if err != nil || name != "owner" {
+		t.Fatalf("reset: %q %v", name, err)
+	}
+	if _, err := s.Login(&entity.User{Username: "owner", Password: goodPassword}); err == nil {
+		t.Fatal("old password still works")
+	}
+	if _, err := s.Login(&entity.User{Username: "owner", Password: newPassword}); err != nil {
+		t.Fatalf("new password: %v", err)
+	}
+	var guest entity.User
+	s.db.Where("username = ?", "guest").Take(&guest)
+	if guest.Password != "x" {
+		t.Fatal("non admin password changed")
+	}
+
+	// A second admin (should never happen) needs the username.
+	hash, _ := s.hashPassword(goodPassword, entity.GetPassArgonParams())
+	s.db.Create(&entity.User{Username: "owner2", Password: hash, Permissions: entity.PERM_ADMIN})
+	if _, err := s.ResetAdminPassword("", newPassword); !errors.Is(err, ErrAdminAmbiguous) {
+		t.Fatalf("two admins: %v", err)
+	}
+	if name, err := s.ResetAdminPassword("owner2", newPassword); err != nil || name != "owner2" {
+		t.Fatalf("named reset: %q %v", name, err)
+	}
+}

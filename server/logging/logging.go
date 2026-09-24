@@ -15,13 +15,26 @@ var (
 
 // Setup slog defaults
 func Setup(logfp string) io.Writer {
-	multiw := io.MultiWriter(&lumberjack.Logger{
+	return setup(logfp, true)
+}
+
+// SetupFileOnly is Setup without also logging to stdout, for command line
+// tools whose output is for the user.
+func SetupFileOnly(logfp string) {
+	setup(logfp, false)
+}
+
+func setup(logfp string, stdout bool) io.Writer {
+	var multiw io.Writer = &lumberjack.Logger{
 		Filename:   logfp,
 		MaxSize:    1, // megabytes
 		MaxBackups: 3,
 		MaxAge:     28, // days
 		Compress:   false,
-	}, os.Stdout)
+	}
+	if stdout {
+		multiw = io.MultiWriter(multiw, os.Stdout)
+	}
 	slog.SetDefault(slog.New(
 		slog.NewTextHandler(multiw, &slog.HandlerOptions{
 			Level:     logLevel,

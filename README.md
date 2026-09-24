@@ -259,6 +259,7 @@ Open `/stats` for totals and charts built from your visible titles only. Every c
 Watcharr/
 ├── server/                      Go API server
 │   ├── watcharr.go              Entry point: config, database, UI process, HTTP server
+│   ├── resetpassword.go         The reset-password command
 │   ├── app/                     Builds the Gin engine and wires every feature
 │   │   └── allowlist.go         Routes open to visitors; everything else is admin-only
 │   ├── config/                  watcharr.json loading and saving
@@ -431,7 +432,28 @@ If titles, posters or search results don't load and the log shows TMDB errors, s
 
 ### Lost admin password
 
-There is no password reset command. If you are still signed in, change the password from the profile page. Otherwise restore `data/watcharr.db` from a backup. Deleting the database starts setup again, but also deletes your list.
+If you are still signed in, change the password from the profile page. Otherwise set a new one with the `reset-password` command, which asks for the new password twice. Run it where the server can read the same data directory.
+
+With Docker Compose:
+
+```bash
+docker compose exec watcharr /watcharr reset-password
+```
+
+With a local build:
+
+```bash
+cd server
+WATCHARR_DATA=../data ./watcharr reset-password
+```
+
+The password can also be piped in, for scripts:
+
+```bash
+echo 'a new long password' | docker compose exec -T watcharr /watcharr reset-password
+```
+
+Browsers that are already signed in stay signed in. To sign every session out, change `JWT_SECRET` in `data/watcharr.json` and restart the server.
 
 ### Playwright browsers not installed
 

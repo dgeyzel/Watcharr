@@ -300,3 +300,55 @@ func (s *Service) UserChangePassword(pwds UserPasswordUpdateRequest, userId uint
 	}
 	return nil
 }
+
+var (
+	ErrNoAdmin        = errors.New("there is no admin account yet, create one at /setup")
+	ErrAdminNotFound  = errors.New("no admin account with that username")
+	ErrAdminAmbiguous = errors.New("more than one admin account exists, pass the username")
+)
+
+// ResetAdminPassword sets a new password for the admin, for when it has been
+// lost (run from the command line, not the api). With an empty username the
+// only admin account is used. Returns the username that was updated.
+func (s *Service) ResetAdminPassword(username string, newPassword string) (string, error) {
+	if err := validatePassword(newPassword); err != nil {
+		return "", err
+	}
+	var users []entity.User
+	if err := s.db.Where("type IS NULL OR type = 0").Select("id", "username", "permissions").Find(&users).Error; err != nil {
+		return "", fmt.Errorf("failed to read users: %w", err)
+	}
+	admins := []entity.User{}
+	for _, u := range users {
+		if permission.Has(u.Permissions, entity.PERM_ADMIN) {
+			admins = append(admins, u)
+		}
+	}
+	var admin *entity.User
+	switch {
+	case len(admins) == 0:
+		return "", ErrNoAdmin
+	case username != "":
+		for i := range admins {
+			if admins[i].Username == username {
+				admin = &admins[i]
+			}
+		}
+		if admin == nil {
+			return "", ErrAdminNotFound
+		}
+	case len(admins) > 1:
+		return "", ErrAdminAmbiguous
+	default:
+		admin = &admins[0]
+	}
+	hash, err := s.hashPassword(newPassword, entity.GetPassArgonParams())
+	if err != nil {
+		return "", fmt.Errorf("failed to hash password: %w", err)
+	}
+	if err := s.db.Model(&entity.User{}).Where("id = ?", admin.ID).Update("password", hash).Error; err != nil {
+		return "", fmt.Errorf("failed to save password: %w", err)
+	}
+	slog.Warn("Admin password was reset from the command line", "username", admin.Username)
+	return admin.Username, nil
+}
