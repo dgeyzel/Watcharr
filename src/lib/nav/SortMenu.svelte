@@ -2,14 +2,21 @@
 	import { store } from "@/store.svelte";
 	import Menu from "../Menu.svelte";
 
+	// Tier starts with the best tier first (S to F, a DOWN/desc sort), every
+	// other sort starts ascending.
+	const DOWN_FIRST = ["TIER"];
+
 	function sortClicked(type: string) {
 		window.scrollTo({ top: 0 });
-		let mode = "UP";
-		// If this sort is already the `activeSort`
+		const [first, second] = DOWN_FIRST.includes(type)
+			? ["DOWN", "UP"]
+			: ["UP", "DOWN"];
+		let mode = first;
+		// If this sort is already the `activeSort`, cycle: first, second, off.
 		if (store.activeSort[0] == type) {
-			if (store.activeSort[1] === "UP") {
-				mode = "DOWN";
-			} else if (store.activeSort[1] === "DOWN") {
+			if (store.activeSort[1] === first) {
+				mode = second;
+			} else if (store.activeSort[1] === second) {
 				mode = "";
 			}
 		}
@@ -61,6 +68,12 @@
 			Rating
 		</button>
 	{/if}
+	<button
+		class={`plain ${getDirectionClass("TIER")}`}
+		onclick={() => sortClicked("TIER")}
+	>
+		Tier
+	</button>
 	<button
 		class={`plain ${getDirectionClass("ALPHA")}`}
 		onclick={() => sortClicked("ALPHA")}

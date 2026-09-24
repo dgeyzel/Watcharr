@@ -13,6 +13,22 @@
 	--placeholder-color: #8e8e8e;
 	--poster-rating-color: gold;
 	--img-blend-multiply-bg-col: rgba(0, 0, 0, 0.85);
+	/* S-F tier chips. The letter is always shown, colour is extra. */
+	--tier-s-bg: #f2c230;
+	--tier-s-fg: #1a1300;
+	--tier-a-bg: #1e7a3c;
+	--tier-a-fg: #ffffff;
+	--tier-b-bg: #1d6f86;
+	--tier-b-fg: #ffffff;
+	--tier-c-bg: #4b55b8;
+	--tier-c-fg: #ffffff;
+	--tier-d-bg: #e0893a;
+	--tier-d-fg: #1a0f00;
+	--tier-f-bg: #b3261e;
+	--tier-f-fg: #ffffff;
+	--tier-border: rgba(0, 0, 0, 0.25);
+	--tier-unrated-bg: rgb(235, 235, 235);
+	--tier-unrated-fg: rgb(60, 60, 60);
 }
 
 :root.theme-dark {
@@ -27,6 +43,9 @@
 	--placeholder-color: #8e8e8e;
 	--poster-rating-color: black;
 	--img-blend-multiply-bg-col: rgba(255, 255, 255, 0.03);
+	--tier-border: rgba(255, 255, 255, 0.35);
+	--tier-unrated-bg: rgb(45, 45, 45);
+	--tier-unrated-fg: rgb(215, 215, 215);
 }
 
 @font-face {

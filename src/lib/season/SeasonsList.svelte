@@ -12,7 +12,6 @@
 	import SeasonsListEpisode from "./SeasonsListEpisode.svelte";
 	import PosterStatus from "@/lib/poster/PosterStatus.svelte";
 	import { notify } from "@/lib/util/notify";
-	import PosterRating from "@/lib/poster/PosterRating.svelte";
 	import Icon from "@/lib/Icon.svelte";
 	import { watchedStatuses } from "@/lib/util/helpers";
 	import { removeWatchedSeason, updateWatchedSeason } from "./api";
@@ -103,14 +102,6 @@
 		updateWatchedSeason(watchedItem, seasonNumber, { status: type });
 	}
 
-	function handleStarClick(rating: number, seasonNumber: number) {
-		if (!watchedItem) {
-			console.error("handleStarClick: No watchedItem!");
-			return;
-		}
-		updateWatchedSeason(watchedItem, seasonNumber, { rating });
-	}
-
 	function checkSeasonStatus(
 		watchedSeasons: WatchedSeason[] | undefined,
 		currentSeason: MediaSeason,
@@ -189,18 +180,6 @@
 						{@const ws = watchedItem?.watchedSeasons?.find(
 							(s) => s.seasonNumber === season.season_number,
 						)}
-						{#if ws}
-							<div class="rating">
-								<PosterRating
-									rating={ws?.rating}
-									btnTooltip="Season Rating"
-									handleStarClick={(r) =>
-										handleStarClick(r, season.season_number)}
-									minimal={true}
-									direction="bot"
-								/>
-							</div>
-						{/if}
 						<div class="status">
 							<PosterStatus
 								status={ws?.status}
@@ -378,11 +357,6 @@
 
 			&:first-of-type {
 				margin-left: auto;
-			}
-
-			&.rating {
-				height: 40px;
-				min-height: 40px;
 			}
 
 			&.status {

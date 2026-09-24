@@ -272,7 +272,7 @@
 					}}
 				>
 					<Icon i="eye" />
-					{#if store.activeFilters?.type?.length > 0 || store.activeFilters?.status?.length > 0}
+					{#if store.wlDetailedView?.length > 0}
 						<div class="indicator"></div>
 					{/if}
 				</button>
@@ -309,7 +309,7 @@
 					}}
 				>
 					<Icon i="filter" />
-					{#if store.activeFilters?.type?.length > 0 || store.activeFilters?.status?.length > 0}
+					{#if store.hasActiveFilters}
 						<div class="indicator"></div>
 					{/if}
 				</button>
@@ -320,6 +320,14 @@
 					<FilterMenu />
 				{/if}
 			{/if}
+			<!-- Public stats, for visitors and the admin. -->
+			<a
+				class="plain other stats-link"
+				href={resolve("/stats")}
+				class:active={page.url?.pathname === "/stats"}
+			>
+				Stats
+			</a>
 			<button
 				class="plain other tag"
 				onclick={() => {
@@ -613,6 +621,18 @@
 					height: 6px;
 					background-color: $text-color;
 					border-radius: 50%;
+				}
+			}
+
+			a.stats-link {
+				font-weight: bold;
+				font-size: 15px;
+				margin-right: 12px;
+				color: $text-color;
+
+				&:hover,
+				&.active {
+					text-decoration: underline;
 				}
 			}
 

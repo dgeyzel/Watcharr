@@ -15,6 +15,7 @@ const watched: PublicWatched = {
 	posterPath: "/fc.jpg",
 	releaseDate: "1999-10-15T00:00:00Z",
 	status: "FINISHED",
+	tier: "A",
 	review: "Great.",
 	tags: [{ id: 1, name: "Favourites", color: "#fff", bgColor: "#000" }],
 	createdAt: "2026-01-01T00:00:00Z",

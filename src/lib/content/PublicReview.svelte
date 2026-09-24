@@ -1,8 +1,9 @@
-<!-- Read only review shown to visitors on a title's page: status and review
-  text. Never shows a numeric rating. -->
+<!-- Read only review shown to visitors on a title's page: the tier slot,
+  status and review text. Never shows a numeric rating. -->
 <script lang="ts">
 	import type { Watched } from "@/types";
 	import Icon from "../Icon.svelte";
+	import TierBadge from "../tier/TierBadge.svelte";
 	import { toUnderstandableStatus, watchedStatuses } from "../util/helpers";
 
 	interface Props {
@@ -13,6 +14,7 @@
 </script>
 
 <section class="review" aria-label="Review">
+	<TierBadge status={watched.status} tier={watched.tier} size="page" />
 	<div class="status">
 		<Icon i={watchedStatuses[watched.status]} wh={18} />
 		<span>{toUnderstandableStatus(watched.status)}</span>
@@ -26,6 +28,7 @@
 	.review {
 		display: flex;
 		flex-flow: column;
+		align-items: flex-start;
 		gap: 10px;
 		width: 100%;
 		max-width: 600px;

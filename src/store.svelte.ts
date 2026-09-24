@@ -50,7 +50,7 @@ interface Store {
 const _store: Store = $state({
 	notifications: [],
 	activeSort: defaultSort,
-	activeFilters: { type: [], status: [] },
+	activeFilters: { type: [], status: [], tier: [] },
 	appTheme: "system",
 	sortAndFiltersForQueryParams: {},
 	importedList: undefined,
@@ -77,6 +77,10 @@ const updateSortAndFiltersForQueryParams = () => {
 			const s = store.activeFilters?.status?.join(",");
 			if (s) {
 				qp["status"] = s;
+			}
+			const g = store.activeFilters?.tier?.join(",");
+			if (g) {
+				qp["tier"] = g;
 			}
 		}
 		_store.sortAndFiltersForQueryParams = qp;
@@ -124,7 +128,8 @@ export const store = {
 		return (
 			this.activeFilters &&
 			(this.activeFilters.status?.length > 0 ||
-				this.activeFilters.type?.length > 0)
+				this.activeFilters.type?.length > 0 ||
+				this.activeFilters.tier?.length > 0)
 		);
 	},
 	set activeFilters(v) {
@@ -224,7 +229,7 @@ export const clearAllStores = () => {
 };
 
 export const clearActiveFilters = () => {
-	store.activeFilters = { type: [], status: [] };
+	store.activeFilters = { type: [], status: [], tier: [] };
 };
 
 if (browser) {
@@ -252,7 +257,8 @@ function rehydrateStore() {
 	// Restore activeFilters
 	const filters = localStorage.getItem("activeFilterReal");
 	if (filters) {
-		_store.activeFilters = JSON.parse(filters);
+		// Older saved filters may not have `tier`.
+		_store.activeFilters = { tier: [], ...JSON.parse(filters) };
 		console.debug(
 			"rehydrateStore: Restored activeFilters:",
 			$state.snapshot(store.activeFilters),

@@ -1,5 +1,7 @@
 <script lang="ts">
-	import type { Watched, WatchedStatus } from "@/types";
+	import type { Tier, Watched, WatchedStatus } from "@/types";
+	import TierPicker from "../tier/TierPicker.svelte";
+	import { updateTier } from "../util/api";
 	import Rating from "../rating/Rating.svelte";
 	import Status from "../Status.svelte";
 	import MyThoughts from "./MyThoughts.svelte";
@@ -19,9 +21,26 @@
 		onStatusChanged,
 		onThoughtsChanged,
 	}: Props = $props();
+
+	let tierSaving = $state(false);
+
+	async function tierChanged(g: Tier | null) {
+		if (!watched) return;
+		tierSaving = true;
+		await updateTier(watched, g);
+		tierSaving = false;
+	}
 </script>
 
 <div class="review">
+	<!-- The S-F tier sits next to (not instead of) the numeric rating. -->
+	{#if watched}
+		<TierPicker
+			tier={watched.tier}
+			disabled={tierSaving}
+			onChange={(g) => tierChanged(g)}
+		/>
+	{/if}
 	<Rating rating={watched?.rating} onChange={onRatingChanged} />
 	<Status status={watched?.status} onChange={onStatusChanged} />
 	{#if watched}

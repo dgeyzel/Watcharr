@@ -1,3 +1,8 @@
+/** S-F tier (S highest). Separate from the numeric rating. */
+export type Tier = "S" | "A" | "B" | "C" | "D" | "F";
+/** All tiers, highest first. */
+export const TIERS: Tier[] = ["S", "A", "B", "C", "D", "F"];
+
 export type WatchedStatus =
 	"PLANNED" | "WATCHING" | "FINISHED" | "HOLD" | "DROPPED";
 /**
@@ -136,6 +141,8 @@ export interface Watched {
 	pinned: boolean;
 	/** Hidden from visitors (a draft). Admin only. */
 	hidden?: boolean;
+	/** S-F tier, null when not tiered. */
+	tier?: Tier | null;
 
 	activity?: Activity[];
 	watchedSeasons?: WatchedSeason[];
@@ -545,11 +552,16 @@ export interface ImportedList {
 	watchedEpisodes?: WatchedEpisode[];
 	watchedSeasons?: WatchedSeason[];
 	tags?: TagAddRequest[];
+	/** Only set when restoring a Watcharr export. */
+	tier?: Tier | null;
+	hidden?: boolean;
 }
 
 export interface Filters {
 	type: string[];
 	status: string[];
+	/** Tiers (S..F) and/or "none" (watched but not rated). */
+	tier: string[];
 }
 
 export interface ServerConfig {

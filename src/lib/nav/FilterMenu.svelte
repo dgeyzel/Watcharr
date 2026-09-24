@@ -4,6 +4,10 @@
 	import Icon from "../Icon.svelte";
 	import tooltip from "../actions/tooltip";
 	import Menu from "../Menu.svelte";
+	import { TIERS } from "@/types";
+
+	// Tier filter value for "watched but not yet rated".
+	const TIER_NONE = "none";
 
 	function filterClicked(type: keyof Filters, f: string) {
 		if (store.activeFilters[type]?.includes(f)) {
@@ -21,7 +25,7 @@
 <Menu conf={{ width: "200px", right: "47px", arrowLeft: "38px" }}>
 	<div class="title">
 		<h4 class="norm sm-caps">type</h4>
-		{#if store.activeFilters?.type?.length > 0 || store.activeFilters?.status?.length > 0}
+		{#if store.hasActiveFilters}
 			<button
 				class="plain"
 				use:tooltip={{ text: "Clear", pos: "left" }}
@@ -67,6 +71,7 @@
 	>
 		finished
 	</button>
+
 	<!-- On hold and dropped are admin only statuses. -->
 	{#if store.isAdmin}
 		<button
@@ -82,6 +87,24 @@
 			dropped
 		</button>
 	{/if}
+	<h4 class="norm sm-caps">tier</h4>
+	<div class="type-filter tier-filter">
+		{#each TIERS as g (g)}
+			<button
+				class:active={store.activeFilters.tier.includes(g)}
+				aria-pressed={store.activeFilters.tier.includes(g)}
+				onclick={() => filterClicked("tier", g)}
+			>
+				{g}
+			</button>
+		{/each}
+	</div>
+	<button
+		class={`plain exact-text ${store.activeFilters.tier.includes(TIER_NONE) ? "on" : ""}`}
+		onclick={() => filterClicked("tier", TIER_NONE)}
+	>
+		Watched but not yet rated
+	</button>
 </Menu>
 
 <style lang="scss">
@@ -132,6 +155,15 @@
 				BlinkMacSystemFont;
 			font-size: 18px;
 		}
+	}
+
+	.tier-filter button {
+		flex: 1 1 14%;
+		font-weight: bold;
+	}
+
+	button.plain.exact-text {
+		text-transform: none;
 	}
 
 	.type-filter {

@@ -18,6 +18,7 @@ import {
 	type Tag,
 	type Watched,
 	type WatchedStatus,
+	type Tier,
 } from "@/types";
 
 export type PublicMediaType = "movie" | "tv";
@@ -36,6 +37,8 @@ export interface PublicWatched {
 	posterPath: string;
 	releaseDate: string | null;
 	status: WatchedStatus;
+	/** Null when not tiered, always null for planned titles. */
+	tier: Tier | null;
 	review: string;
 	tags: PublicTag[];
 	createdAt: string;
@@ -76,7 +79,7 @@ export interface PublicOwner {
 }
 
 /** Sorts the public list supports. Others fall back to date added. */
-const PUBLIC_SORTS = ["DATEADDED", "ALPHA", "DATERELEASED"];
+const PUBLIC_SORTS = ["DATEADDED", "ALPHA", "DATERELEASED", "TIER"];
 
 /**
  * Keeps only the sort/filter params the public list understands.
@@ -89,7 +92,7 @@ export function toPublicListParams(
 		if (k === "sort") {
 			if (PUBLIC_SORTS.includes(String(v))) out.sort = v;
 		} else if (
-			["page", "limit", "sortDir", "type", "status", "q"].includes(k)
+			["page", "limit", "sortDir", "type", "status", "tier", "q"].includes(k)
 		) {
 			out[k] = v;
 		}
@@ -115,6 +118,7 @@ export function publicWatchedToWatched(w: PublicWatched): Watched {
 		createdAt: w.createdAt,
 		updatedAt: w.updatedAt,
 		status: w.status,
+		tier: w.tier,
 		thoughts: w.review,
 		pinned: false,
 		tags: w.tags.map(toTag),

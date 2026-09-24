@@ -24,6 +24,7 @@
 	import { resolve } from "$app/paths";
 	import { store } from "@/store.svelte";
 	import Icon from "../Icon.svelte";
+	import TierBadge from "../tier/TierBadge.svelte";
 
 	interface Props {
 		media: Media;
@@ -356,6 +357,10 @@
 			<!-- Must be on watched list, and poster not hovered -->
 			<ExtraDetails {...buildExtraDetails(meta.type, watched)} />
 		{/if}
+		<!-- Tier slot (letter, "not rated yet" or nothing for planned). -->
+		<span class="tier-slot">
+			<TierBadge status={watched?.status} tier={watched?.tier} size="poster" />
+		</span>
 		{#if !readOnly && watched?.hidden}
 			<span class="hidden-badge" title="Hidden from visitors">
 				<Icon i="eye-closed" wh={14} />Hidden
@@ -463,6 +468,24 @@
 
 	li.just-deleted:not(.active) {
 		filter: grayscale(0.8) blur(1px);
+	}
+
+	.tier-slot {
+		position: absolute;
+		left: 6px;
+		bottom: 6px;
+		z-index: 2;
+		display: flex;
+		pointer-events: none;
+
+		&:empty {
+			display: none;
+		}
+	}
+
+	// Out of the way of the title/buttons while the poster is active.
+	li.active .tier-slot {
+		display: none;
 	}
 
 	.hidden-badge {

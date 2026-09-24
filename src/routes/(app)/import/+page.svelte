@@ -303,6 +303,9 @@
 
 					watchedEpisodes: v.watchedEpisodes,
 					watchedSeasons: v.watchedSeasons,
+					// Lossless restore of our own export (never derived from a rating).
+					tier: v.tier ?? null,
+					hidden: v.hidden ?? false,
 				};
 				if (v.content) {
 					t.tmdbId = v.content.tmdbId;

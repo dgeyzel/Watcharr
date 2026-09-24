@@ -5,7 +5,6 @@
 		Watched,
 	} from "@/types";
 	import Icon from "../Icon.svelte";
-	import PosterRating from "../poster/PosterRating.svelte";
 	import PosterStatus from "../poster/PosterStatus.svelte";
 	import { notify } from "../util/notify";
 	import { store } from "@/store.svelte";
@@ -97,16 +96,6 @@
 		);
 		reSetIsHidden();
 	}
-
-	function handleStarClick(rating: number) {
-		if (!watchedItem) {
-			console.error("handleStarClick: No watchedItem!");
-			return;
-		}
-		updateWatchedEpisode(watchedItem, ep.season_number, ep.episode_number, {
-			rating,
-		});
-	}
 </script>
 
 <li class={isHidden ? "dont-spoil" : ""}>
@@ -160,16 +149,6 @@
 	</div>
 	{#if watchedItem}
 		<div class="status-rating-ctr">
-			<div class="rating" style="width: 45px">
-				<PosterRating
-					rating={we?.rating}
-					btnTooltip={`Episode ${ep.episode_number} Rating`}
-					handleStarClick={(r) => handleStarClick(r)}
-					minimal={true}
-					direction="bot"
-					hideStarWhenRated
-				/>
-			</div>
 			<div class="status">
 				<PosterStatus
 					status={we?.status}
@@ -283,11 +262,6 @@
 
 				&:first-of-type {
 					margin-left: auto;
-				}
-
-				&.rating {
-					height: 40px;
-					min-height: 40px;
 				}
 
 				&.status {

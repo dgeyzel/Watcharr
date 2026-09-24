@@ -1,5 +1,6 @@
 import { store } from "@/store.svelte";
 import {
+	type Tier,
 	type Watched,
 	type WatchedAddRequest,
 	type WatchedStatus,
@@ -174,6 +175,27 @@ export async function updateWatched(
 		console.error("updateWatched: Failed!", err);
 		notify({ id: nid, text: `Failed!`, type: "error" });
 		throw err;
+	}
+}
+
+/**
+ * Set (or clear with null) a watched entry's S-F tier. Updates `wEntry` on
+ * success. Returns if it succeeded.
+ */
+export async function updateTier(
+	wEntry: Watched,
+	tier: Tier | null,
+): Promise<boolean> {
+	const nid = notify({ text: "Saving", type: "loading" });
+	try {
+		await req.put(`/watched/${wEntry.id}`, { tier });
+		wEntry.tier = tier;
+		notify({ id: nid, text: "Saved!", type: "success" });
+		return true;
+	} catch (err) {
+		console.error("updateTier: Failed!", err);
+		notify({ id: nid, text: "Failed!", type: "error" });
+		return false;
 	}
 }
 
