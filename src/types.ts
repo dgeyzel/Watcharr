@@ -535,6 +535,20 @@ export interface ImportResponse {
 	watchedEntry?: Watched;
 }
 
+/** A TMDB title a pasted url resolved to (`POST /import/resolve`). */
+export interface ResolveCandidate {
+	tmdbId: number;
+	mediaType: "movie" | "tv";
+	title: string;
+	/** 0 when unknown. */
+	year: number;
+	posterPath: string;
+}
+
+export interface ResolveResponse {
+	candidates: ResolveCandidate[];
+}
+
 export interface ImportedList {
 	tmdbId?: number;
 	imdbId?: string;

@@ -26,8 +26,11 @@
 	import MediaTypeFilter from "@/lib/search/MediaTypeFilter.svelte";
 	import { resolve } from "$app/paths";
 	import Filters from "./components/Filters.svelte";
+	import FixImportModal from "@/lib/import/FixImportModal.svelte";
 
 	let { data } = $props();
+
+	let addByUrlOpen = $state(false);
 
 	const scroll = infScroll({ callback: onScrollToBottom });
 	const dataLoader = paginatedLoader<Media, SearchResponseMeta>(load);
@@ -186,6 +189,9 @@
 						}}
 					/>
 					<Filters />
+					<button class="add-by-url" onclick={() => (addByUrlOpen = true)}>
+						Add by URL
+					</button>
 				</PageTitle>
 			{:else}
 				<PageTitle title="Results"><span></span></PageTitle>
@@ -248,9 +254,31 @@
 			{/if}
 		{:else}
 			<h2>No Search Query!</h2>
+			{#if store.isAdmin}
+				<button class="add-by-url" onclick={() => (addByUrlOpen = true)}>
+					Add by URL
+				</button>
+			{/if}
 		{/if}
 	</div>
 </div>
+
+{#if addByUrlOpen && store.isAdmin}
+	<FixImportModal
+		title="Add by URL"
+		confirmText="Open"
+		onConfirm={(c) => {
+			addByUrlOpen = false;
+			// The title page is where it gets a status (added) and a tier.
+			goto(
+				c.mediaType === "tv"
+					? resolve(`/tv/${c.tmdbId}`)
+					: resolve(`/movie/${c.tmdbId}`),
+			);
+		}}
+		onClose={() => (addByUrlOpen = false)}
+	/>
+{/if}
 
 <style lang="scss">
 	.content {
@@ -262,6 +290,11 @@
 			width: 100%;
 			max-width: 1200px;
 		}
+	}
+
+	button.add-by-url {
+		width: max-content;
+		margin-left: auto;
 	}
 
 	button.from-my-list-msg {

@@ -23,8 +23,10 @@
 		type ImportResponse,
 		type ImportedList,
 		type Media,
+		type ResolveCandidate,
 		type WatchedStatus,
 	} from "@/types";
+	import FixImportModal from "@/lib/import/FixImportModal.svelte";
 	import { req } from "@/lib/util/api";
 	import { onDestroy } from "svelte";
 	import papa from "papaparse";
@@ -39,6 +41,10 @@
 
 	let rList: ImportedList[] = $state([]);
 	let isImporting = $state(false);
+	// The import ran through every row, failed rows can now be fixed.
+	let importDone = $state(false);
+	// Row being fixed by pasting a url.
+	let fixItem: ImportedList | undefined = $state();
 	let importText = $state("");
 	let cancelled = $state(false);
 	let importTableEl: HTMLTableElement | undefined = $state();
@@ -510,16 +516,15 @@
 			await sleep(1500);
 		}
 		store.importedList = undefined;
-		if (
-			rList.some(
-				(i) =>
-					i.state == ImportResponseType.IMPORT_FAILED ||
-					i.state == ImportResponseType.IMPORT_NOTFOUND,
-			)
-		) {
-			// Some items failed.. go to some-failed
-			store.parsedImportedList = rList;
-			goto(resolve("/import/some-failed"));
+		importDone = true;
+		const failedCount = rList.filter(isFixable).length;
+		if (failedCount > 0) {
+			// Stay here, failed rows get a Fix button.
+			notify({
+				type: "error",
+				text: `${failedCount} item${failedCount === 1 ? "" : "s"} couldn't be imported. Use Fix to match ${failedCount === 1 ? "it" : "them"} by url.`,
+				time: 15000,
+			});
 		} else {
 			notify({
 				type: "success",
@@ -528,6 +533,49 @@
 			});
 			goto(resolve("/"));
 		}
+	}
+
+	function isFixable(i: ImportedList) {
+		return (
+			i.state === ImportResponseType.IMPORT_FAILED ||
+			i.state === ImportResponseType.IMPORT_NOTFOUND ||
+			i.state === ImportResponseType.IMPORT_MULTI
+		);
+	}
+
+	/**
+	 * Re-import a failed row as the title a pasted url resolved to. The row
+	 * keeps its status, dates, thoughts and rating.
+	 */
+	async function fixRow(item: ImportedList, c: ResolveCandidate) {
+		const prev = { tmdbId: item.tmdbId, type: item.type, state: item.state };
+		item.tmdbId = c.tmdbId;
+		item.type = c.mediaType;
+		item.state = undefined;
+		rList = rList;
+		try {
+			await doImport(item);
+		} catch (err) {
+			Object.assign(item, prev);
+			rList = rList;
+			throw err;
+		}
+		if (
+			item.state !== ImportResponseType.IMPORT_SUCCESS &&
+			item.state !== ImportResponseType.IMPORT_EXISTS
+		) {
+			const failedState = item.state;
+			Object.assign(item, prev);
+			item.state = failedState ?? ImportResponseType.IMPORT_FAILED;
+			rList = rList;
+			throw new globalThis.Error("Import failed, try another link.");
+		}
+		// Keep what the admin sees in sync with what was imported.
+		item.name = c.title;
+		if (c.year) item.year = c.year;
+		rList = rList;
+		fixItem = undefined;
+		notify({ type: "success", text: `Imported ${c.title}` });
 	}
 
 	async function doImport(item: ImportedList) {
@@ -646,6 +694,8 @@
 				<h5 class="norm">
 					{#if !isImporting}
 						Review your imported list and fix any problems.
+					{:else if importDone}
+						Import finished. Fix any failed rows by pasting a link to the title.
 					{:else}
 						You can fix any failed imports when the process completes.
 					{/if}
@@ -665,7 +715,7 @@
 								<th>Type</th>
 								<th>Status</th>
 								<th>Rating</th>
-								{#if !isImporting}
+								{#if !isImporting || importDone}
 									<th></th>
 								{/if}
 							</tr>
@@ -684,7 +734,7 @@
 													<Icon i="check" wh={22} />
 												{:else if l.state === ImportResponseType.IMPORT_NOTFOUND}
 													<Icon i="close" wh={22} />
-												{:else if l.state === ImportResponseType.IMPORT_FAILED}
+												{:else if l.state === ImportResponseType.IMPORT_FAILED || l.state === ImportResponseType.IMPORT_MULTI}
 													<Icon i="close" wh={22} />
 												{:else if l.state === ImportResponseType.IMPORT_EXISTS}
 													<Icon i="check" wh={22} />
@@ -756,6 +806,18 @@
 												<Icon i="close" wh="25" />
 											</button>
 										</td>
+									{:else if importDone}
+										<td>
+											{#if isFixable(l)}
+												<button
+													class="fix"
+													aria-label="Fix {l.name ?? 'row'}"
+													onclick={() => (fixItem = l)}
+												>
+													Fix
+												</button>
+											{/if}
+										</td>
 									{/if}
 								</tr>
 							{/each}
@@ -792,10 +854,26 @@
 					<button onclick={() => changeAllStatuses()} disabled={isImporting}>
 						Change All Statuses
 					</button>
-					<button onclick={startImport} disabled={isImporting}>
-						Start Importing
-					</button>
+					{#if importDone}
+						<button onclick={() => goto(resolve("/"))}>Done</button>
+					{:else}
+						<button onclick={startImport} disabled={isImporting}>
+							Start Importing
+						</button>
+					{/if}
 				</div>
+				{#if fixItem}
+					{@const item = fixItem}
+					<FixImportModal
+						desc="Paste a TMDB, IMDb, Letterboxd or Rotten Tomatoes link for {item.name ||
+							'this row'}{item.year ? ` (${item.year})` : ''}."
+						mediaTypeHint={item.type === "movie" || item.type === "tv"
+							? item.type
+							: undefined}
+						onConfirm={(c) => fixRow(item, c)}
+						onClose={() => (fixItem = undefined)}
+					/>
+				{/if}
 				{#if typeof changeAllStatusesModalCb === "function"}
 					<Modal
 						title="Select a New Status"
@@ -835,39 +913,33 @@
 						disableInteraction={true}
 						hideButtons={true}
 						onClick={async () => {
-							const item = rList.find(
-								(i) => i.name === importMultiItem?.original.name,
-							);
-							console.log(
-								"MultipleResultsFound: Poster clicked. Item in rList:",
-								item,
-							);
-							if (item) {
-								// We found the item in our import list, update it
-								// to match the selected choice and do the import with it.
-								item.type = getContentTypeFromMedia(r);
-								if (item.type === "movie" || item.type === "tv") {
-									item.tmdbId = r.ids.tmdb;
-								} else {
-									item.state = ImportResponseType.IMPORT_FAILED;
-									notify({
-										type: "error",
-										text: "Can't import selected result because it has an unsupported type associated with it!",
-										time: 10000,
-									});
-									return;
-								}
-								try {
-									await doImport(item);
-									importMultiItem?.callback(undefined);
-								} catch (err) {
-									importMultiItem?.callback(String(err));
-								}
-								importMultiItem = undefined;
-							} else {
-								// TODO: show error notif and update state with error icon
+							const multi = importMultiItem;
+							if (!multi) {
+								return;
 							}
-							console.log("multi: Poster clicked", r);
+							// `original` is the row being imported.
+							const item = multi.original;
+							console.log("MultipleResultsFound: Poster clicked", item, r);
+							importMultiItem = undefined;
+							const type = getContentTypeFromMedia(r);
+							if (type !== "movie" && type !== "tv") {
+								// Always finish the row, or the import loop waits forever.
+								notify({
+									type: "error",
+									text: "Can't import selected result because it has an unsupported type associated with it! Use Fix to pick another.",
+									time: 10000,
+								});
+								multi.callback("unsupported type");
+								return;
+							}
+							item.type = type;
+							item.tmdbId = r.ids.tmdb;
+							try {
+								await doImport(item);
+								multi.callback(undefined);
+							} catch (err) {
+								multi.callback(String(err));
+							}
 						}}
 					/>
 				{/each}
@@ -940,6 +1012,11 @@
 				}
 			}
 		}
+	}
+
+	button.fix {
+		width: max-content;
+		padding: 4px 12px;
 	}
 
 	.btns {

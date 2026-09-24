@@ -1,6 +1,5 @@
 import type {
 	Filters,
-	ImportedList,
 	PrivateUser,
 	Tag,
 	Theme,
@@ -38,7 +37,6 @@ interface Store {
 					| "imdb";
 		  }
 		| undefined;
-	parsedImportedList: ImportedList[] | undefined;
 	searchQuery: string;
 	wlDetailedView: WLDetailedViewOption[];
 	tags: Tag[];
@@ -54,7 +52,6 @@ const _store: Store = $state({
 	appTheme: "system",
 	sortAndFiltersForQueryParams: {},
 	importedList: undefined,
-	parsedImportedList: undefined,
 	searchQuery: "",
 	userInfo: undefined,
 	userSettings: undefined,
@@ -163,12 +160,6 @@ export const store = {
 	set importedList(v) {
 		_store.importedList = v;
 	},
-	get parsedImportedList() {
-		return _store.parsedImportedList;
-	},
-	set parsedImportedList(v) {
-		_store.parsedImportedList = v;
-	},
 	get searchQuery() {
 		return _store.searchQuery;
 	},
@@ -219,7 +210,6 @@ export const clearAllStores = () => {
 	store.activeSort = defaultSort;
 	store.appTheme = "system";
 	store.importedList = undefined;
-	store.parsedImportedList = undefined;
 	store.searchQuery = "";
 	store.userInfo = undefined;
 	store.userSettings = undefined;

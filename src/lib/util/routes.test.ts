@@ -7,7 +7,6 @@ describe("isAdminOnlyRoute", () => {
 		"/person/123",
 		"/import",
 		"/import/process",
-		"/import/some-failed",
 		"/server",
 		"/profile",
 	])("%s is admin only", (p) => {
