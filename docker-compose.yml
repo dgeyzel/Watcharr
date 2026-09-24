@@ -2,7 +2,7 @@ services:
   watcharr:
     # The :latest tag is used for simplicity, it is recommended
     # to use an actual version, then when updating check the releases for changelogs.
-    image: ghcr.io/sbondco/watcharr:latest
+    image: ghcr.io/dgeyzel/watcharr:latest
     container_name: watcharr
     ports:
       - 3080:3080
