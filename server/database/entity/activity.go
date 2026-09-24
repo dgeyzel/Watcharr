@@ -38,8 +38,8 @@ var (
 	EPISODE_REMOVED             ActivityType = "EPISODE_REMOVED"
 	EPISODE_RATING_CHANGED      ActivityType = "EPISODE_RATING_CHANGED"
 	EPISODE_STATUS_CHANGED      ActivityType = "EPISODE_STATUS_CHANGED"
-	// Data is json {"old": grade|null, "new": grade|null}.
-	GRADE_CHANGED ActivityType = "GRADE_CHANGED"
+	// Data is json {"old": tier|null, "new": tier|null}.
+	TIER_CHANGED ActivityType = "TIER_CHANGED"
 )
 
 type Activity struct {

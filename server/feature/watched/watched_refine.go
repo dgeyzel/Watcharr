@@ -140,8 +140,8 @@ func refineSort(
 			Name: "`Content`.`release_date`",
 			Raw:  true,
 		}))
-	case domain.WatchedSortGrade:
-		query.OrderByGrade(db, dir == domain.WatchedSortDirAsc)
+	case domain.WatchedSortTier:
+		query.OrderByTier(db, dir == domain.WatchedSortDirAsc)
 	}
 }
 
@@ -163,7 +163,7 @@ func watchedRefineFilter(
 		// Apply filters
 		refineFilterType(db, wr.FilterType)
 		refineFilterStatus(db, wr.FilterStatus, userSettings)
-		query.FilterGrade(db, wr.FilterGrade)
+		query.FilterTier(db, wr.FilterTier)
 		return db
 	}
 }

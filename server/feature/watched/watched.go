@@ -291,7 +291,7 @@ func (s *Service) AddWatched(
 	watched.Status = ar.Status
 	watched.Rating = ar.Rating
 	watched.Thoughts = ar.Thoughts
-	watched.Grade = ar.Grade.Value
+	watched.Tier = ar.Tier.Value
 	watched.Hidden = util.Deref(ar.Hidden, false)
 
 	// If custom WatchedDate passed, set CreatedAt and UpdatedAt fields to it.
@@ -429,7 +429,7 @@ func (s *Service) restoreWatchedAfterDuplicatedKeyErr(
 			"status":     ar.Status,
 			"rating":     ar.Rating,
 			"thoughts":   ar.Thoughts,
-			"grade":      ar.Grade.Value,
+			"tier":       ar.Tier.Value,
 			"hidden":     util.Deref(ar.Hidden, false),
 			"deleted_at": nil,
 		})
@@ -443,7 +443,7 @@ func (s *Service) restoreWatchedAfterDuplicatedKeyErr(
 	watchedOut.Status = ar.Status
 	watchedOut.Rating = ar.Rating
 	watchedOut.Thoughts = ar.Thoughts
-	watchedOut.Grade = ar.Grade.Value
+	watchedOut.Tier = ar.Tier.Value
 	watchedOut.Hidden = util.Deref(ar.Hidden, false)
 	watchedOut.DeletedAt = gorm.DeletedAt{}
 
@@ -472,7 +472,7 @@ func (s *Service) updateWatched(
 		return domain.WatchedUpdateResponse{}, errors.New("failed to update watched entry")
 	}
 	originalThoughts := upwat.Thoughts
-	originalGrade := upwat.Grade
+	originalTier := upwat.Tier
 	if ar.Rating != 0 {
 		upwat.Rating = ar.Rating
 	}
@@ -491,8 +491,8 @@ func (s *Service) updateWatched(
 	if ar.Hidden != nil {
 		upwat.Hidden = *ar.Hidden
 	}
-	if ar.Grade.Set {
-		upwat.Grade = ar.Grade.Value
+	if ar.Tier.Set {
+		upwat.Tier = ar.Tier.Value
 	}
 	res = s.db.Save(upwat)
 	if res.RowsAffected <= 0 {
@@ -544,15 +544,15 @@ func (s *Service) updateWatched(
 			false,
 		)
 	}
-	if ar.Grade.Set && entity.RankOf(originalGrade) != entity.RankOf(ar.Grade.Value) {
-		data, _ := json.Marshal(map[string]*entity.Grade{
-			"old": originalGrade,
-			"new": ar.Grade.Value,
+	if ar.Tier.Set && entity.RankOf(originalTier) != entity.RankOf(ar.Tier.Value) {
+		data, _ := json.Marshal(map[string]*entity.Tier{
+			"old": originalTier,
+			"new": ar.Tier.Value,
 		})
 		addedActivity, _ = s.activityProvider.AddActivity(userId,
 			domain.ActivityAddProps{
 				WatchedID: id,
-				Type:      entity.GRADE_CHANGED,
+				Type:      entity.TIER_CHANGED,
 				Data:      string(data),
 			},
 			false,

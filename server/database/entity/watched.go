@@ -35,9 +35,9 @@ type Watched struct {
 	Pinned   bool    `json:"pinned" gorm:"default:false;not null"`
 	// Hidden entries are drafts, only the admin can see them (never public).
 	Hidden bool `json:"hidden" gorm:"default:false;not null"`
-	// S-F grade, separate from the numeric rating (never derived from it).
-	// Null means not graded.
-	Grade           *Grade           `json:"grade" gorm:"type:text"`
+	// S-F tier, separate from the numeric rating (never derived from it).
+	// Null means not tiered.
+	Tier            *Tier            `json:"tier" gorm:"type:text"`
 	UserID          uint             `json:"-" gorm:"uniqueIndex:usernctnidx;uniqueIndex:userngamidx"`
 	ContentID       *int             `json:"-" gorm:"uniqueIndex:usernctnidx"`
 	Content         *Content         `json:"content,omitempty"`

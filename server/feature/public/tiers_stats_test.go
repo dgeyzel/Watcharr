@@ -12,62 +12,62 @@ import (
 	"github.com/sbondCo/Watcharr/internal/testutil/testserver"
 )
 
-type gradedItem struct {
+type tieredItem struct {
 	Title  string  `json:"title"`
 	Status string  `json:"status"`
-	Grade  *string `json:"grade"`
+	Tier   *string `json:"tier"`
 }
 
-func (f *fixture) gradedList(t *testing.T, path string) []gradedItem {
+func (f *fixture) tieredList(t *testing.T, path string) []tieredItem {
 	t.Helper()
 	code, body := f.get(path)
 	if code != http.StatusOK {
 		t.Fatalf("GET %s: %d %s", path, code, body)
 	}
-	var r struct{ Results []gradedItem }
+	var r struct{ Results []tieredItem }
 	if err := json.Unmarshal(body, &r); err != nil {
 		t.Fatal(err)
 	}
 	return r.Results
 }
 
-func gradeOf(items []gradedItem, title string) string {
+func tierOf(items []tieredItem, title string) string {
 	for _, i := range items {
 		if i.Title == title {
-			if i.Grade == nil {
+			if i.Tier == nil {
 				return "null"
 			}
-			return *i.Grade
+			return *i.Tier
 		}
 	}
 	return "missing"
 }
 
-func TestPublicGrades(t *testing.T) {
+func TestPublicTiers(t *testing.T) {
 	f := newFixture(t)
-	items := f.gradedList(t, "/api/public/watched")
+	items := f.tieredList(t, "/api/public/watched")
 	for title, want := range map[string]string{
 		"Fight Club":      "A",
 		"Breaking Bad":    "S",
 		"Game of Thrones": "C",
 		"Pulp Fiction":    "null", // watched, not rated yet
-		// Planned titles have no grade slot, even with a grade saved.
+		// Planned titles have no tier slot, even with a tier saved.
 		"Forrest Gump":    "null",
 		"Stranger Things": "null",
 	} {
-		if got := gradeOf(items, title); got != want {
-			t.Errorf("%s grade = %s, want %s", title, got, want)
+		if got := tierOf(items, title); got != want {
+			t.Errorf("%s tier = %s, want %s", title, got, want)
 		}
 	}
 	_, body := f.get("/api/public/watched/movie/13")
-	if !strings.Contains(string(body), `"grade":null`) {
-		t.Errorf("planned item leaked its grade: %s", body)
+	if !strings.Contains(string(body), `"tier":null`) {
+		t.Errorf("planned item leaked its tier: %s", body)
 	}
 }
 
-func TestPublicGradeSort(t *testing.T) {
+func TestPublicTierSort(t *testing.T) {
 	f := newFixture(t)
-	titlesOf := func(items []gradedItem) []string {
+	titlesOf := func(items []tieredItem) []string {
 		out := []string{}
 		for _, i := range items {
 			out = append(out, i.Title)
@@ -76,21 +76,21 @@ func TestPublicGradeSort(t *testing.T) {
 	}
 	// S -> F, then watched but not rated, then planned (alphabetical within).
 	want := []string{"Breaking Bad", "Fight Club", "Game of Thrones", "Pulp Fiction", "Forrest Gump", "Stranger Things"}
-	if got := titlesOf(f.gradedList(t, "/api/public/watched?sort=GRADE&sortDir=desc")); !slices.Equal(got, want) {
-		t.Errorf("grade desc:\n got  %v\n want %v", got, want)
+	if got := titlesOf(f.tieredList(t, "/api/public/watched?sort=TIER&sortDir=desc")); !slices.Equal(got, want) {
+		t.Errorf("tier desc:\n got  %v\n want %v", got, want)
 	}
 	// Default direction is desc (S first).
-	if got := titlesOf(f.gradedList(t, "/api/public/watched?sort=GRADE")); !slices.Equal(got, want) {
-		t.Errorf("grade default:\n got  %v\n want %v", got, want)
+	if got := titlesOf(f.tieredList(t, "/api/public/watched?sort=TIER")); !slices.Equal(got, want) {
+		t.Errorf("tier default:\n got  %v\n want %v", got, want)
 	}
-	// Ascending flips the graded ones only, ungraded stay last.
+	// Ascending flips the tiered ones only, untiered stay last.
 	wantAsc := []string{"Game of Thrones", "Fight Club", "Breaking Bad", "Pulp Fiction", "Forrest Gump", "Stranger Things"}
-	if got := titlesOf(f.gradedList(t, "/api/public/watched?sort=GRADE&sortDir=asc")); !slices.Equal(got, wantAsc) {
-		t.Errorf("grade asc:\n got  %v\n want %v", got, wantAsc)
+	if got := titlesOf(f.tieredList(t, "/api/public/watched?sort=TIER&sortDir=asc")); !slices.Equal(got, wantAsc) {
+		t.Errorf("tier asc:\n got  %v\n want %v", got, wantAsc)
 	}
 }
 
-func TestPublicGradeFilter(t *testing.T) {
+func TestPublicTierFilter(t *testing.T) {
 	f := newFixture(t)
 	cases := map[string][]string{
 		"A":      {"Fight Club"},
@@ -104,11 +104,11 @@ func TestPublicGradeFilter(t *testing.T) {
 	}
 	for q, want := range cases {
 		got := []string{}
-		for _, i := range f.gradedList(t, "/api/public/watched?grade="+q) {
+		for _, i := range f.tieredList(t, "/api/public/watched?tier="+q) {
 			got = append(got, i.Title)
 		}
 		if !slices.Equal(sorted(got), sorted(want)) {
-			t.Errorf("grade=%s:\n got  %v\n want %v", q, sorted(got), sorted(want))
+			t.Errorf("tier=%s:\n got  %v\n want %v", q, sorted(got), sorted(want))
 		}
 	}
 }
@@ -131,8 +131,8 @@ func TestPublicStats(t *testing.T) {
 	}
 	// Planned (Forrest Gump B) is never counted, hidden (Matrix F) and on hold
 	// (Inception D) are excluded.
-	if st.Grades != (public.StatsGrades{S: 1, A: 1, C: 1, Unrated: 1}) {
-		t.Errorf("grades: %+v", st.Grades)
+	if st.Tiers != (public.StatsTiers{S: 1, A: 1, C: 1, Unrated: 1}) {
+		t.Errorf("tiers: %+v", st.Tiers)
 	}
 	if len(st.AddedPerMonth) != 12 {
 		t.Fatalf("addedPerMonth has %d months", len(st.AddedPerMonth))
@@ -193,13 +193,13 @@ func TestPublicStatsEmptySite(t *testing.T) {
 func TestPublicStatsKeys(t *testing.T) {
 	f := newFixture(t)
 	_, body := f.get("/api/public/stats")
-	want := []string{"addedPerMonth", "byDecade", "byStatus", "finishedMovieHours", "grades", "tags", "topGenres", "totals"}
+	want := []string{"addedPerMonth", "byDecade", "byStatus", "finishedMovieHours", "tags", "tiers", "topGenres", "totals"}
 	if got := keysOf(t, body); !slices.Equal(got, want) {
 		t.Errorf("stats keys:\n got  %v\n want %v", got, want)
 	}
 	var st map[string]json.RawMessage
 	json.Unmarshal(body, &st)
-	if got := keysOf(t, st["grades"]); !slices.Equal(got, []string{"A", "B", "C", "D", "F", "S", "unrated"}) {
-		t.Errorf("grades keys: %v", got)
+	if got := keysOf(t, st["tiers"]); !slices.Equal(got, []string{"A", "B", "C", "D", "F", "S", "unrated"}) {
+		t.Errorf("tiers keys: %v", got)
 	}
 }

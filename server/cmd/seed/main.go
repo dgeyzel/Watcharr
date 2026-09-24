@@ -42,12 +42,12 @@ type seedItem struct {
 	Tagged      bool
 	// Hidden from visitors (a draft).
 	Hidden bool
-	// S-F grade ("" = ungraded).
-	Grade string
+	// S-F tier ("" = untiered).
+	Tier string
 }
 
 // The fixture list. It covers movies and tv, every status and a tag.
-// Later phases extend it (hidden items, grades).
+// Later phases extend it (hidden items, tiers).
 var items = []seedItem{
 	{"movie", 550, "FINISHED", 9, "A seeded review of Fight Club.", true, false, "A"},
 	{"movie", 603, "FINISHED", 8, "A hidden draft review of The Matrix.", false, true, "B"},
@@ -133,8 +133,8 @@ func main() {
 			"rating":      it.Rating,
 			"thoughts":    it.Thoughts,
 		}
-		if it.Grade != "" {
-			body["grade"] = it.Grade
+		if it.Tier != "" {
+			body["tier"] = it.Tier
 		}
 		c.do(http.MethodPost, "/api/watched", body, &w)
 		if it.Hidden {

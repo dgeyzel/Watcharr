@@ -60,9 +60,9 @@ type ImportRequest struct {
 	Tags             []TagAddRequest         `json:"tags"`
 	// Only set when restoring a Watcharr export (lossless backup). Other
 	// importers never set these, a numeric rating is never turned into a
-	// grade.
-	Grade  entity.OptionalGrade `json:"grade"`
-	Hidden *bool                `json:"hidden"`
+	// tier.
+	Tier   entity.OptionalTier `json:"tier"`
+	Hidden *bool               `json:"hidden"`
 }
 
 // Internal struct given to the SuccessfulImport function.

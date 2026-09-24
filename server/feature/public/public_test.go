@@ -36,15 +36,15 @@ type item struct {
 	rating             float64
 	thoughts           string
 	tagged             bool
-	// Grade set when adding ("" = ungraded).
-	grade string
+	// Tier set when adding ("" = untiered).
+	tier string
 }
 
 var items = []item{
 	{"Fight Club", "movie", 550, "FINISHED", 9, "Review of Fight Club.", true, "A"},
 	{"The Matrix", "movie", 603, "FINISHED", 8, "Hidden draft review.", false, "F"}, // hidden below
 	{"Pulp Fiction", "movie", 680, "WATCHING", 0, "", false, ""},
-	{"Forrest Gump", "movie", 13, "PLANNED", 0, "", false, "B"}, // planned, grade must not show
+	{"Forrest Gump", "movie", 13, "PLANNED", 0, "", false, "B"}, // planned, tier must not show
 	{"Inception", "movie", 27205, "HOLD", 7, "On hold.", true, "D"},
 	{"Interstellar", "movie", 157336, "DROPPED", 3, "Dropped.", false, ""},
 	{"Breaking Bad", "tv", 1396, "FINISHED", 10, "Review of Breaking Bad.", true, "S"},
@@ -77,8 +77,8 @@ func newFixture(t *testing.T) *fixture {
 			"contentType": it.contentType, "tmdbId": it.tmdbID,
 			"status": it.status, "rating": it.rating, "thoughts": it.thoughts,
 		}
-		if it.grade != "" {
-			body["grade"] = it.grade
+		if it.tier != "" {
+			body["tier"] = it.tier
 		}
 		id := s.AddWatched(f.token, body)
 		f.ids[it.title] = id
@@ -306,7 +306,7 @@ func keysOf(t *testing.T, raw json.RawMessage) []string {
 // ratings, user ids, activity, hidden flag, settings) can slip in.
 func TestPublicResponseKeysAreExact(t *testing.T) {
 	f := newFixture(t)
-	watchedKeys := []string{"createdAt", "grade", "mediaType", "posterPath", "releaseDate", "review", "status", "tags", "title", "tmdbId", "updatedAt"}
+	watchedKeys := []string{"createdAt", "mediaType", "posterPath", "releaseDate", "review", "status", "tags", "tier", "title", "tmdbId", "updatedAt"}
 	tagKeys := []string{"bgColor", "color", "id", "name"}
 	pageKeys := []string{"limit", "page", "results", "totalPages", "totalResults"}
 	contentKeys := []string{"backdropPath", "genres", "homepage", "mediaType", "overview", "posterPath", "providers", "providersFullListLink", "releaseDate", "releaseDateLast", "runtime", "seasons", "status", "title", "tmdbId", "videos"}

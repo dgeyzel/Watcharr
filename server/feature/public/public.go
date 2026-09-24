@@ -32,8 +32,8 @@ const (
 	SortDateAdded    Sort = "DATEADDED"
 	SortAlphabetical Sort = "ALPHA"
 	SortDateReleased Sort = "DATERELEASED"
-	// S to F (F to S with sortDir=asc), ungraded after graded, planned last.
-	SortGrade Sort = "GRADE"
+	// S to F (F to S with sortDir=asc), untiered after tiered, planned last.
+	SortTier Sort = "TIER"
 )
 
 // ListRequest holds the (untrusted) query params for listing watched items.
@@ -47,8 +47,8 @@ type ListRequest struct {
 	// Comma separated list of media types (movie, tv).
 	Type string `form:"type"`
 	Tag  uint   `form:"tag"`
-	// Comma separated grades (S..F) and/or "none" (watched but not rated).
-	Grade string `form:"grade"`
+	// Comma separated tiers (S..F) and/or "none" (watched but not rated).
+	Tier string `form:"tier"`
 	// Search the owner's list by title (never hits TMDB).
 	Q string `form:"q"`
 }
@@ -146,8 +146,8 @@ func (s *Service) ListWatched(req ListRequest) (WatchedPageResponse, error) {
 		q = q.Where("watcheds.id IN (?)",
 			s.db.Table("watched_tags").Select("watched_id").Where("tag_id = ?", req.Tag))
 	}
-	if req.Grade != "" {
-		q = query.FilterGrade(q, []string{req.Grade})
+	if req.Tier != "" {
+		q = query.FilterTier(q, []string{req.Tier})
 	}
 	if search := strings.TrimSpace(req.Q); search != "" {
 		q = q.Where("Content.title LIKE ?", "%"+search+"%")
@@ -164,9 +164,9 @@ func (s *Service) ListWatched(req ListRequest) (WatchedPageResponse, error) {
 	var col clause.Column
 	colDesc := desc
 	switch req.Sort {
-	case SortGrade:
-		ordered = query.OrderByGrade(ordered, !desc)
-		// Then alphabetical within the same grade.
+	case SortTier:
+		ordered = query.OrderByTier(ordered, !desc)
+		// Then alphabetical within the same tier.
 		col = clause.Column{Name: "`Content`.`title`", Raw: true}
 		colDesc = false
 	case SortAlphabetical:

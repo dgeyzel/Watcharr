@@ -16,8 +16,8 @@ import (
 type StatsResponse struct {
 	Totals   StatsTotals   `json:"totals"`
 	ByStatus StatsByStatus `json:"byStatus"`
-	// Over finished and watching titles only (planned titles have no grade).
-	Grades        StatsGrades   `json:"grades"`
+	// Over finished and watching titles only (planned titles have no tier).
+	Tiers         StatsTiers    `json:"tiers"`
 	AddedPerMonth []MonthCount  `json:"addedPerMonth"`
 	ByDecade      []DecadeCount `json:"byDecade"`
 	TopGenres     []NameCount   `json:"topGenres"`
@@ -38,7 +38,7 @@ type StatsByStatus struct {
 	Planned  int `json:"planned"`
 }
 
-type StatsGrades struct {
+type StatsTiers struct {
 	S int `json:"S"`
 	A int `json:"A"`
 	B int `json:"B"`
@@ -127,7 +127,7 @@ func (s *Service) GetStats() (StatsResponse, error) {
 		}
 
 		if w.Status == entity.FINISHED || w.Status == entity.WATCHING {
-			addGrade(&resp.Grades, w.Grade)
+			addTier(&resp.Tiers, w.Tier)
 		}
 
 		if idx, ok := months[w.CreatedAt.UTC().Format("2006-01")]; ok {
@@ -185,23 +185,23 @@ func (s *Service) GetStats() (StatsResponse, error) {
 	return resp, nil
 }
 
-func addGrade(g *StatsGrades, grade *entity.Grade) {
-	if grade == nil {
+func addTier(g *StatsTiers, tier *entity.Tier) {
+	if tier == nil {
 		g.Unrated++
 		return
 	}
-	switch *grade {
-	case entity.GradeS:
+	switch *tier {
+	case entity.TierS:
 		g.S++
-	case entity.GradeA:
+	case entity.TierA:
 		g.A++
-	case entity.GradeB:
+	case entity.TierB:
 		g.B++
-	case entity.GradeC:
+	case entity.TierC:
 		g.C++
-	case entity.GradeD:
+	case entity.TierD:
 		g.D++
-	case entity.GradeF:
+	case entity.TierF:
 		g.F++
 	default:
 		g.Unrated++

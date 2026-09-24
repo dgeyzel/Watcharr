@@ -138,7 +138,7 @@ func (s *Service) SuccessfulImport(
 		Rating:      ar.Rating,
 		Thoughts:    ar.Thoughts,
 		WatchedDate: wDate,
-		Grade:       ar.Grade,
+		Tier:        ar.Tier,
 		Hidden:      ar.Hidden,
 	}
 	switch props.ContentType {

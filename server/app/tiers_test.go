@@ -15,7 +15,7 @@ type watchedRow struct {
 	ID      uint    `json:"id"`
 	Status  string  `json:"status"`
 	Rating  float64 `json:"rating"`
-	Grade   *string `json:"grade"`
+	Tier    *string `json:"tier"`
 	Hidden  bool    `json:"hidden"`
 	Content struct {
 		Title  string `json:"title"`
@@ -37,97 +37,97 @@ func allWatched(t *testing.T, s *testserver.Server, token string) map[int]watche
 	return out
 }
 
-func gradeStr(g *string) string {
+func tierStr(g *string) string {
 	if g == nil {
 		return "null"
 	}
 	return *g
 }
 
-func TestAdminSetsChangesAndClearsGrade(t *testing.T) {
+func TestAdminSetsChangesAndClearsTier(t *testing.T) {
 	s := testserver.New(t)
 	token := s.SeedAdmin()
 	id := s.AddWatched(token, map[string]any{"contentType": "movie", "tmdbId": 550, "status": "FINISHED", "rating": 8})
 	path := fmt.Sprintf("/api/watched/%d", id)
 
-	// Added without a grade: null (never derived from the rating).
-	if g := allWatched(t, s, token)[550].Grade; g != nil {
-		t.Fatalf("new item grade = %s, want null", *g)
+	// Added without a tier: null (never derived from the rating).
+	if g := allWatched(t, s, token)[550].Tier; g != nil {
+		t.Fatalf("new item tier = %s, want null", *g)
 	}
 
 	steps := []struct {
 		body any
 		want string
 	}{
-		{map[string]any{"grade": "A"}, "A"},
-		{map[string]any{"grade": "S"}, "S"},
-		{map[string]any{"grade": nil}, "null"},
-		{map[string]any{"grade": "F"}, "F"},
-		{map[string]any{"grade": ""}, "null"},
+		{map[string]any{"tier": "A"}, "A"},
+		{map[string]any{"tier": "S"}, "S"},
+		{map[string]any{"tier": nil}, "null"},
+		{map[string]any{"tier": "F"}, "F"},
+		{map[string]any{"tier": ""}, "null"},
 	}
 	for _, st := range steps {
 		if rec := s.Do(http.MethodPut, path, st.body, token); rec.Code != http.StatusOK {
 			t.Fatalf("PUT %v: %d %s", st.body, rec.Code, rec.Body.String())
 		}
-		if got := gradeStr(allWatched(t, s, token)[550].Grade); got != st.want {
-			t.Fatalf("after PUT %v grade = %s, want %s", st.body, got, st.want)
+		if got := tierStr(allWatched(t, s, token)[550].Tier); got != st.want {
+			t.Fatalf("after PUT %v tier = %s, want %s", st.body, got, st.want)
 		}
 	}
 
-	// Numeric ratings still work and don't touch the grade.
-	s.Do(http.MethodPut, path, map[string]any{"grade": "B"}, token)
+	// Numeric ratings still work and don't touch the tier.
+	s.Do(http.MethodPut, path, map[string]any{"tier": "B"}, token)
 	if rec := s.Do(http.MethodPut, path, map[string]any{"rating": 6.5}, token); rec.Code != http.StatusOK {
 		t.Fatalf("PUT rating: %d %s", rec.Code, rec.Body.String())
 	}
 	w := allWatched(t, s, token)[550]
-	if w.Rating != 6.5 || gradeStr(w.Grade) != "B" {
-		t.Fatalf("after rating change: rating=%v grade=%s, want 6.5 B", w.Rating, gradeStr(w.Grade))
+	if w.Rating != 6.5 || tierStr(w.Tier) != "B" {
+		t.Fatalf("after rating change: rating=%v tier=%s, want 6.5 B", w.Rating, tierStr(w.Tier))
 	}
 }
 
-func TestInvalidGradesAreRejected(t *testing.T) {
+func TestInvalidTiersAreRejected(t *testing.T) {
 	s := testserver.New(t)
 	token := s.SeedAdmin()
-	id := s.AddWatched(token, map[string]any{"contentType": "movie", "tmdbId": 550, "status": "FINISHED", "grade": "C"})
+	id := s.AddWatched(token, map[string]any{"contentType": "movie", "tmdbId": 550, "status": "FINISHED", "tier": "C"})
 	path := fmt.Sprintf("/api/watched/%d", id)
 	for _, bad := range []any{"A+", "E", "a", "s", "B-", "SS", 5, true} {
-		if rec := s.Do(http.MethodPut, path, map[string]any{"grade": bad}, token); rec.Code != http.StatusBadRequest {
-			t.Errorf("PUT grade %v: expected 400, got %d", bad, rec.Code)
+		if rec := s.Do(http.MethodPut, path, map[string]any{"tier": bad}, token); rec.Code != http.StatusBadRequest {
+			t.Errorf("PUT tier %v: expected 400, got %d", bad, rec.Code)
 		}
 		if rec := s.Do(http.MethodPost, "/api/watched", map[string]any{
-			"contentType": "movie", "tmdbId": 603, "status": "FINISHED", "grade": bad,
+			"contentType": "movie", "tmdbId": 603, "status": "FINISHED", "tier": bad,
 		}, token); rec.Code != http.StatusBadRequest {
-			t.Errorf("POST grade %v: expected 400, got %d", bad, rec.Code)
+			t.Errorf("POST tier %v: expected 400, got %d", bad, rec.Code)
 		}
 	}
-	if got := gradeStr(allWatched(t, s, token)[550].Grade); got != "C" {
-		t.Fatalf("grade changed by invalid requests: %s", got)
+	if got := tierStr(allWatched(t, s, token)[550].Tier); got != "C" {
+		t.Fatalf("tier changed by invalid requests: %s", got)
 	}
 }
 
-func TestAddWithGradeAndHidden(t *testing.T) {
+func TestAddWithTierAndHidden(t *testing.T) {
 	s := testserver.New(t)
 	token := s.SeedAdmin()
-	s.AddWatched(token, map[string]any{"contentType": "movie", "tmdbId": 550, "status": "FINISHED", "grade": "A", "hidden": true})
+	s.AddWatched(token, map[string]any{"contentType": "movie", "tmdbId": 550, "status": "FINISHED", "tier": "A", "hidden": true})
 	s.AddWatched(token, map[string]any{"contentType": "tv", "tmdbId": 1396, "status": "WATCHING"})
 	all := allWatched(t, s, token)
-	if gradeStr(all[550].Grade) != "A" || !all[550].Hidden {
+	if tierStr(all[550].Tier) != "A" || !all[550].Hidden {
 		t.Errorf("550: %+v", all[550])
 	}
-	if all[1396].Grade != nil || all[1396].Hidden {
-		t.Errorf("1396 should be ungraded and visible: %+v", all[1396])
+	if all[1396].Tier != nil || all[1396].Hidden {
+		t.Errorf("1396 should be untiered and visible: %+v", all[1396])
 	}
 }
 
-func TestGradeChangeActivity(t *testing.T) {
+func TestTierChangeActivity(t *testing.T) {
 	s := testserver.New(t)
 	token := s.SeedAdmin()
 	id := s.AddWatched(token, map[string]any{"contentType": "movie", "tmdbId": 550, "status": "FINISHED"})
 	path := fmt.Sprintf("/api/watched/%d", id)
-	s.Do(http.MethodPut, path, map[string]any{"grade": "B"}, token)
-	s.Do(http.MethodPut, path, map[string]any{"grade": "A"}, token)
-	s.Do(http.MethodPut, path, map[string]any{"grade": "A"}, token) // no change, no activity
-	s.Do(http.MethodPut, path, map[string]any{"grade": nil}, token)
+	s.Do(http.MethodPut, path, map[string]any{"tier": "B"}, token)
+	s.Do(http.MethodPut, path, map[string]any{"tier": "A"}, token)
+	s.Do(http.MethodPut, path, map[string]any{"tier": "A"}, token) // no change, no activity
+	s.Do(http.MethodPut, path, map[string]any{"tier": nil}, token)
 
 	rec := s.Do(http.MethodGet, fmt.Sprintf("/api/activity/%d", id), nil, token)
 	var acts []struct {
@@ -139,18 +139,18 @@ func TestGradeChangeActivity(t *testing.T) {
 	}
 	got := []string{}
 	for _, a := range acts {
-		if a.Type == string(entity.GRADE_CHANGED) {
+		if a.Type == string(entity.TIER_CHANGED) {
 			got = append(got, a.Data)
 		}
 	}
 	want := []string{`{"new":"B","old":null}`, `{"new":"A","old":"B"}`, `{"new":null,"old":"A"}`}
 	if !slices.Equal(got, want) {
-		t.Fatalf("grade activity:\n got  %v\n want %v", got, want)
+		t.Fatalf("tier activity:\n got  %v\n want %v", got, want)
 	}
 }
 
-// D4: numeric ratings are never mapped to grades, imports arrive ungraded.
-func TestImportNeverMapsRatingToGrade(t *testing.T) {
+// D4: numeric ratings are never mapped to tiers, imports arrive untiered.
+func TestImportNeverMapsRatingToTier(t *testing.T) {
 	s := testserver.New(t)
 	token := s.SeedAdmin()
 	for _, body := range []map[string]any{
@@ -169,8 +169,8 @@ func TestImportNeverMapsRatingToGrade(t *testing.T) {
 		if w.Rating != rating {
 			t.Errorf("%d rating = %v, want %v (kept as today)", id, w.Rating, rating)
 		}
-		if w.Grade != nil {
-			t.Errorf("%d grade = %s, want null (no mapping)", id, *w.Grade)
+		if w.Tier != nil {
+			t.Errorf("%d tier = %s, want null (no mapping)", id, *w.Tier)
 		}
 		if w.Hidden {
 			t.Errorf("%d imported as hidden, want visible", id)
@@ -178,33 +178,33 @@ func TestImportNeverMapsRatingToGrade(t *testing.T) {
 	}
 }
 
-// A Watcharr export restore is lossless: grade and hidden come back.
-func TestWatcharrImportRestoresGradeAndHidden(t *testing.T) {
+// A Watcharr export restore is lossless: tier and hidden come back.
+func TestWatcharrImportRestoresTierAndHidden(t *testing.T) {
 	s := testserver.New(t)
 	token := s.SeedAdmin()
 	s.Do(http.MethodPost, "/api/import", map[string]any{
-		"tmdbId": 550, "type": "movie", "rating": 7, "status": "FINISHED", "grade": "S", "hidden": true,
+		"tmdbId": 550, "type": "movie", "rating": 7, "status": "FINISHED", "tier": "S", "hidden": true,
 	}, token)
 	w := allWatched(t, s, token)[550]
-	if gradeStr(w.Grade) != "S" || !w.Hidden || w.Rating != 7 {
+	if tierStr(w.Tier) != "S" || !w.Hidden || w.Rating != 7 {
 		t.Fatalf("restored: %+v", w)
 	}
 	if rec := s.Do(http.MethodPost, "/api/import", map[string]any{
-		"tmdbId": 603, "type": "movie", "status": "FINISHED", "grade": "a",
+		"tmdbId": 603, "type": "movie", "status": "FINISHED", "tier": "a",
 	}, token); rec.Code != http.StatusBadRequest {
-		t.Fatalf("import with invalid grade: expected 400, got %d", rec.Code)
+		t.Fatalf("import with invalid tier: expected 400, got %d", rec.Code)
 	}
 }
 
-func TestAdminGradeSortAndFilter(t *testing.T) {
+func TestAdminTierSortAndFilter(t *testing.T) {
 	s := testserver.New(t)
 	token := s.SeedAdmin()
 	for _, it := range []map[string]any{
-		{"contentType": "movie", "tmdbId": 550, "status": "FINISHED", "grade": "B"},
-		{"contentType": "movie", "tmdbId": 603, "status": "FINISHED", "grade": "S"},
+		{"contentType": "movie", "tmdbId": 550, "status": "FINISHED", "tier": "B"},
+		{"contentType": "movie", "tmdbId": 603, "status": "FINISHED", "tier": "S"},
 		{"contentType": "movie", "tmdbId": 680, "status": "WATCHING"},
-		{"contentType": "movie", "tmdbId": 13, "status": "PLANNED", "grade": "S"},
-		{"contentType": "tv", "tmdbId": 1396, "status": "FINISHED", "grade": "F"},
+		{"contentType": "movie", "tmdbId": 13, "status": "PLANNED", "tier": "S"},
+		{"contentType": "tv", "tmdbId": 1396, "status": "FINISHED", "tier": "F"},
 	} {
 		s.AddWatched(token, it)
 	}
@@ -225,30 +225,30 @@ func TestAdminGradeSortAndFilter(t *testing.T) {
 		return out
 	}
 	want := []string{"The Matrix", "Fight Club", "Breaking Bad", "Pulp Fiction", "Forrest Gump"}
-	if got := titles("/api/watched?page=1&sort=GRADE&sortDir=desc"); !slices.Equal(got, want) {
-		t.Errorf("admin grade sort:\n got  %v\n want %v", got, want)
+	if got := titles("/api/watched?page=1&sort=TIER&sortDir=desc"); !slices.Equal(got, want) {
+		t.Errorf("admin tier sort:\n got  %v\n want %v", got, want)
 	}
-	if got := titles("/api/watched?page=1&grade=none"); !slices.Equal(got, []string{"Pulp Fiction"}) {
-		t.Errorf("admin grade=none: %v", got)
+	if got := titles("/api/watched?page=1&tier=none"); !slices.Equal(got, []string{"Pulp Fiction"}) {
+		t.Errorf("admin tier=none: %v", got)
 	}
 	// A letter never matches planned items (Forrest Gump has S saved).
-	if got := titles("/api/watched?page=1&grade=S"); !slices.Equal(got, []string{"The Matrix"}) {
-		t.Errorf("admin grade=S: %v", got)
+	if got := titles("/api/watched?page=1&tier=S"); !slices.Equal(got, []string{"The Matrix"}) {
+		t.Errorf("admin tier=S: %v", got)
 	}
 }
 
-// The grade column is nullable text with no backfill: rows written without a
-// grade stay null.
-func TestGradeColumnIsNullable(t *testing.T) {
+// The tier column is nullable text with no backfill: rows written without a
+// tier stay null.
+func TestTierColumnIsNullable(t *testing.T) {
 	s := testserver.New(t)
-	if !s.DB.Migrator().HasColumn(&entity.Watched{}, "grade") {
-		t.Fatal("watcheds.grade column missing")
+	if !s.DB.Migrator().HasColumn(&entity.Watched{}, "tier") {
+		t.Fatal("watcheds.tier column missing")
 	}
 	token := s.SeedAdmin()
 	id := s.AddWatched(token, map[string]any{"contentType": "movie", "tmdbId": 550, "status": "FINISHED", "rating": 9})
 	var n int64
-	s.DB.Model(&entity.Watched{}).Where("id = ? AND grade IS NULL", id).Count(&n)
+	s.DB.Model(&entity.Watched{}).Where("id = ? AND tier IS NULL", id).Count(&n)
 	if n != 1 {
-		t.Fatal("expected grade to be NULL in the database")
+		t.Fatal("expected tier to be NULL in the database")
 	}
 }
