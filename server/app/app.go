@@ -26,6 +26,7 @@ import (
 	"github.com/sbondCo/Watcharr/feature/job"
 	"github.com/sbondCo/Watcharr/feature/profile"
 	"github.com/sbondCo/Watcharr/feature/public"
+	"github.com/sbondCo/Watcharr/feature/resolve"
 	"github.com/sbondCo/Watcharr/feature/search"
 	"github.com/sbondCo/Watcharr/feature/server"
 	"github.com/sbondCo/Watcharr/feature/setup"
@@ -37,6 +38,7 @@ import (
 	"github.com/sbondCo/Watcharr/feature/watched/season"
 	"github.com/sbondCo/Watcharr/media/tmdb"
 	"github.com/sbondCo/Watcharr/router"
+	"github.com/sbondCo/Watcharr/util/safefetch"
 	"gorm.io/gorm"
 )
 
@@ -44,6 +46,9 @@ type Options struct {
 	// If set, requests that match no route (and are not under /api) are
 	// reverse proxied to the UI server at this host:port.
 	UIProxyHost string
+	// Transport for fetching pages when resolving pasted urls (nil = real
+	// network). Tests pass a fake one.
+	FetchTransport http.RoundTripper
 }
 
 // NewEngine creates the Gin engine with every feature's routes registered.
@@ -112,7 +117,8 @@ func NewEngine(db *gorm.DB, cfg *config.ServerConfig, opts Options) *gin.Engine 
 		userService)
 	profileService := profile.NewService(db)
 	tagService := tag.NewService(db, watchedService)
-	searchService := search.NewService(db, br.Cfg, tmdbService, watchedService)
+	resolver := resolve.New(tmdbService, safefetch.New(resolve.FetchDomains, opts.FetchTransport))
+	searchService := search.NewService(db, br.Cfg, tmdbService, watchedService, resolver)
 	discoverService := discover.NewService(db, br.Cfg, tmdbService)
 	importService := imprt.NewService(
 		db,
@@ -133,7 +139,7 @@ func NewEngine(db *gorm.DB, cfg *config.ServerConfig, opts Options) *gin.Engine 
 	activity.NewRouter(br, activityService).AddRoutes()
 	profile.NewRouter(br, profileService).AddRoutes()
 	user.NewRouter(br, userService).AddRoutes()
-	imprt.NewRouter(br, importService, importTraktService).AddRoutes()
+	imprt.NewRouter(br, importService, importTraktService, resolver).AddRoutes()
 	server.NewRouter(br).AddRoutes()
 	job.NewRouter(br).AddRoutes()
 	task.NewRouter(br).AddRoutes()

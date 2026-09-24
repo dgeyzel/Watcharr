@@ -1,12 +1,13 @@
 package search
 
 import (
+	"context"
 	"log/slog"
-	"net/url"
 	"strings"
+	"time"
 
 	"github.com/sbondCo/Watcharr/domain"
-	"github.com/sbondCo/Watcharr/util"
+	"github.com/sbondCo/Watcharr/feature/resolve"
 )
 
 // Perform "special"  direct search if possible using search query.
@@ -117,85 +118,58 @@ func (s *Service) getExtProviderFromQuery(queryLower string) (string, string) {
 	return provider, querySplit[1]
 }
 
-// Takes in what may be a url. If it is and is a supported url
-// Returns (Provider, ProviderID).
+// Takes in what may be a url. If it is a supported TMDB or IMDb url, returns
+// (Provider, ProviderID). Host matching is strict (see resolve.ParseURL), so
+// lookalike hosts never match.
 func (s *Service) getExtProviderFromURL(maybeaurl string) (string, string) {
-	u, err := url.Parse(maybeaurl)
-	if err != nil || u.Host == "" {
-		slog.Debug("getExtProviderFromURL: Doesn't look like a url.")
+	if !strings.Contains(maybeaurl, "://") && !strings.Contains(maybeaurl, "/") {
 		return "", ""
 	}
-
-	slog.Debug("getExtProviderFromURL: Looks like a url.",
-		"host", u.Host,
-		"path", u.Path)
-
-	// Strict host matching: exact domain or a real subdomain (www., m.),
-	// never lookalikes such as fakeimdb.com or imdb.com.evil.net.
-	if util.HostMatchesDomain(u.Host, "imdb.com") {
-		return s.getExtProviderIDFromIMDBURL(u)
-	} else if util.HostMatchesDomain(u.Host, "themoviedb.org") {
-		return s.getExtProviderIDFromTMDBURL(u)
+	p, err := resolve.ParseURL(maybeaurl)
+	if err != nil {
+		return "", ""
 	}
-
+	switch p.Source {
+	case resolve.SourceTMDB:
+		return p.MediaType, p.ID
+	case resolve.SourceIMDb:
+		return "imdb", p.ID
+	}
 	return "", ""
 }
 
-// Extract id from IMDB url.
-// Returns (Provider, ProviderID).
-func (s *Service) getExtProviderIDFromIMDBURL(u *url.URL) (string, string) {
-	segments := strings.Split(
-		// Trim start/end '/' to avoid empty items at start/end
-		// of final slice.
-		strings.Trim(u.Path, "/"),
-		"/",
-	)
-	segmentsLen := len(segments)
-	slog.Debug("getExtProviderIDFromIMDBURL: Parsing path.",
-		"segments", segments,
-		"segments_len", segmentsLen)
-
-	if segmentsLen < 2 ||
-		segments[0] != "title" ||
-		!strings.HasPrefix(segments[1], "tt") {
-		slog.Debug("getExtProviderIDFromIMDBURL: path provided not supported.")
-		return "", ""
+// searchByResolvedURL handles Letterboxd and Rotten Tomatoes urls (which
+// need their page fetched) through the resolver.
+func (s *Service) searchByResolvedURL(query string, resp *domain.SearchResponse) bool {
+	if s.resolver == nil {
+		return false
 	}
-
-	return "imdb", segments[1]
-}
-
-// Extract id from TMDB url.
-// Returns (Provider, ProviderID).
-func (s *Service) getExtProviderIDFromTMDBURL(u *url.URL) (string, string) {
-	// Split path by '/'
-	segments := strings.Split(
-		// Trim start/end '/' to avoid empty items at start/end
-		// of final slice.
-		strings.Trim(u.Path, "/"),
-		"/",
-	)
-	segmentsLen := len(segments)
-	slog.Debug("getExtProviderIDFromTMDBURL: Parsing path.",
-		"segments", segments,
-		"segments_len", segmentsLen)
-
-	// Check if segments of the path are valid as a tv/movie page.
-	if segmentsLen < 2 ||
-		(segments[0] != "tv" && segments[0] != "movie") ||
-		segments[1] == "" {
-		slog.Debug("getExtProviderIDFromTMDBURL: path provided not supported.")
-		return "", ""
+	p, err := resolve.ParseURL(query)
+	if err != nil || p.Source == resolve.SourceTMDB || p.Source == resolve.SourceIMDb {
+		return false
 	}
-
-	// Extract id from second segment.
-	segs2 := strings.SplitN(segments[1], "-", 2)
-	slog.Debug("getExtProviderIDFromTMDBURL: Parsing media path segment.",
-		"segments", segs2)
-	if len(segs2) != 2 {
-		slog.Warn("getExtProviderIDFromTMDBURL: segs2 doesn't have len of 2.")
-		return "", ""
+	res, err := s.resolver.Resolve(context.Background(), resolve.Request{URL: query})
+	if err != nil {
+		slog.Info("searchByResolvedURL: couldn't resolve url", "error", err)
+		return false
 	}
-
-	return segments[0], segs2[0]
+	for _, c := range res.Candidates {
+		m := domain.Media{
+			IDs:           domain.MediaIDs{TMDB: c.TmdbID},
+			Name:          c.Title,
+			ExtPosterPath: c.PosterPath,
+			Type:          domain.MediaTypeTMDBMovie,
+		}
+		if c.MediaType == "tv" {
+			m.Type = domain.MediaTypeTMDBShow
+		}
+		if c.Year > 0 {
+			m.ReleaseDate = time.Date(c.Year, 1, 1, 0, 0, 0, 0, time.UTC)
+		}
+		resp.Results = append(resp.Results, m)
+	}
+	resp.Page = 1
+	resp.TotalPages = 1
+	resp.TotalResults = int64(len(resp.Results))
+	return len(resp.Results) > 0
 }

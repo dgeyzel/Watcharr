@@ -11,6 +11,7 @@ import (
 	"github.com/sbondCo/Watcharr/config"
 	"github.com/sbondCo/Watcharr/database/entity"
 	"github.com/sbondCo/Watcharr/domain"
+	"github.com/sbondCo/Watcharr/feature/resolve"
 	"github.com/sbondCo/Watcharr/media/tmdb"
 	"github.com/sbondCo/Watcharr/util"
 	"gorm.io/gorm"
@@ -25,6 +26,8 @@ type Service struct {
 	cfg             *config.ServerConfig
 	tmdb            *tmdb.TMDB
 	watchedProvider ServiceWatchedProvider
+	// Resolves Letterboxd/Rotten Tomatoes urls typed into search (optional).
+	resolver *resolve.Resolver
 }
 
 func NewService(
@@ -32,12 +35,14 @@ func NewService(
 	cfg *config.ServerConfig,
 	tmdb *tmdb.TMDB,
 	watchedProvider ServiceWatchedProvider,
+	resolver *resolve.Resolver,
 ) *Service {
 	return &Service{
 		db,
 		cfg,
 		tmdb,
 		watchedProvider,
+		resolver,
 	}
 }
 
@@ -53,6 +58,11 @@ func (s *Service) Search(
 
 	if r.Query == "" {
 		return resp, errors.New("a query is required")
+	}
+
+	if s.searchByResolvedURL(r.Query, &resp) {
+		slog.Debug("Search: Resolved url search worked.")
+		return resp, nil
 	}
 
 	if s.searchExtProviderById(r.Query, &resp) {
