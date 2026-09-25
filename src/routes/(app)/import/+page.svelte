@@ -54,7 +54,10 @@
 			}
 			// Currently only support for importing one file at a time
 			const file = files[0];
-			if (type === "text-list" && file.type !== "text/plain") {
+			// Check the extension too, browsers don't always report the type
+			// (e.g. Windows with Excel installed says .csv is an Excel file).
+			const ext = file.name.toLowerCase().split(".").pop();
+			if (type === "text-list" && file.type !== "text/plain" && ext !== "txt") {
 				notify({
 					type: "error",
 					text: "Text list export must be a .txt file!",
@@ -62,7 +65,11 @@
 				isLoading = false;
 				return;
 			}
-			if ((type === "tmdb" || type === "imdb") && file.type !== "text/csv") {
+			if (
+				(type === "tmdb" || type === "imdb") &&
+				file.type !== "text/csv" &&
+				ext !== "csv"
+			) {
 				notify({
 					type: "error",
 					text: `${type} export must be a .csv file!`,
@@ -74,13 +81,15 @@
 			r.addEventListener(
 				"load",
 				() => {
-					if (r.result) {
-						store.importedList = {
-							data: r.result.toString(),
-							type,
-						};
-						goto(resolve("/import/process"));
+					const data = r.result?.toString() ?? "";
+					if (!data.trim()) {
+						// Nothing to import, say so instead of spinning forever.
+						isLoading = false;
+						notify({ type: "error", text: "That file is empty!" });
+						return;
 					}
+					store.importedList = { data, type };
+					goto(resolve("/import/process"));
 				},
 				false,
 			);

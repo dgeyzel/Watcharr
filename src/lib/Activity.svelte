@@ -38,6 +38,8 @@
 					return `Rating Changed to ${a.data}`;
 				}
 				return "Rating Changed";
+			case "TIER_CHANGED":
+				return tierChangedMsg(a.data);
 			case "STATUS_CHANGED":
 				if (a.data) {
 					return `Status Changed to ${toFullTitleCase(a.data)}`;
@@ -139,6 +141,19 @@
 			default:
 				return a.type;
 		}
+	}
+
+	// TIER_CHANGED data is {"old": tier|null, "new": tier|null}.
+	function tierChangedMsg(data: string | undefined) {
+		try {
+			const d = data ? JSON.parse(data) : undefined;
+			if (d?.new && d?.old) return `Tier Changed from ${d.old} to ${d.new}`;
+			if (d?.new) return `Tier Set to ${d.new}`;
+			if (d?.old) return `Tier ${d.old} Cleared`;
+		} catch (err) {
+			console.error("Activity: invalid TIER_CHANGED data", data, err);
+		}
+		return "Tier Changed";
 	}
 
 	function toFullTitleCase(text: string | undefined) {

@@ -80,4 +80,44 @@ test.describe("import", () => {
 		).find((x) => x.content?.tmdbId === THE_THING);
 		expect(w).toMatchObject({ rating: 8, status: "FINISHED", tier: null });
 	});
+
+	test("file checks: empty, wrong type, and .csv reported as an Excel file", async ({
+		page,
+		adminToken,
+	}) => {
+		await asAdmin(page, adminToken, "/import");
+		const input = (name: string) =>
+			page
+				.locator(".drop-file-btn")
+				.filter({ hasText: name })
+				.locator('input[type="file"]');
+
+		await input(".txt list").setInputFiles({
+			name: "empty.txt",
+			mimeType: "text/plain",
+			buffer: Buffer.from("\n\n"),
+		});
+		await expect(page.getByText("That file is empty!")).toBeVisible();
+		await expect(page).toHaveURL(/\/import$/);
+
+		await input(".txt list").setInputFiles({
+			name: "bad.pdf",
+			mimeType: "application/pdf",
+			buffer: Buffer.from("%PDF-1.4"),
+		});
+		await expect(
+			page.getByText("Text list export must be a .txt file!"),
+		).toBeVisible();
+
+		// Windows with Excel installed reports .csv files like this.
+		await input("IMDb").setInputFiles({
+			name: "ratings.csv",
+			mimeType: "application/vnd.ms-excel",
+			buffer: Buffer.from(
+				"Const,Your Rating,Title,Title Type,Year\ntt0084787,8,The Thing,Movie,1982\n",
+			),
+		});
+		await page.waitForURL("/import/process");
+		await expect(page.locator("td.name input")).toHaveValue("The Thing");
+	});
 });
