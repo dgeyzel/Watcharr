@@ -47,6 +47,7 @@ server/ui
 server/watcharr
 
 FORK_SPEC.md
+UAT_PLAN_corrected.md
 
 # e2e / test output
 server/.e2e-bin
