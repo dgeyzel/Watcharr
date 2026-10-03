@@ -16,6 +16,7 @@ What this fork changes (a notice of modifications, as GPL-3.0 section 5(a) asks)
 - **Public statuses.** Finished, Watching and Planned titles are public. On Hold and Dropped are admin-only.
 - **Public stats page** at `/stats`.
 - **Fixing failed imports by URL.** Paste a TMDB, IMDb, Letterboxd or Rotten Tomatoes link to match a row the import couldn't find. The same links work in search and in "Add by URL".
+- **Movie CSV import.** A simple CSV of movie name, IMDb link and tier. The IMDb link decides which movie is imported, and the tier comes in with it.
 - **Removed:** following, public profiles and lists, games (IGDB), Sonarr and Radarr requests, season and episode ratings, the documentation site and upstream project files.
 - **Added:** a footer credit on every page, and Go, Vitest and Playwright test suites.
 
@@ -36,7 +37,7 @@ What this fork changes (a notice of modifications, as GPL-3.0 section 5(a) asks)
 - Set a tier (S to F), a private numeric rating and a written review
 - Hide or unhide a title from visitors
 - Tag titles and pin favourites
-- Import from a text list, TMDB CSV, IMDb CSV, Movary, MyAnimeList, Ryot, TodoMovies, Trakt and Watcharr exports
+- Import from a text list, a movie CSV (name, IMDb link, tier), TMDB CSV, IMDb CSV, Movary, MyAnimeList, Ryot, TodoMovies, Trakt and Watcharr exports
 - Fix failed import rows, or add any title, by pasting a TMDB, IMDb, Letterboxd or Rotten Tomatoes link
 - Export the list (including tiers and hidden flags) as a Watcharr JSON file
 - Server settings: TMDB key, default country, debug logging and scheduled tasks
@@ -243,11 +244,30 @@ Tick **Hidden from visitors** on the title's page to keep it private while you w
 
 ### 6. Import a list
 
-Open your **Profile** from the account menu, click **Import** and choose a file (text list, TMDB CSV, IMDb CSV, Movary, MyAnimeList, Ryot, TodoMovies, Trakt or a Watcharr export). Review the rows, change any status, then start the import. Imported titles keep their numeric ratings but arrive without a tier; tier each one yourself.
+Open your **Profile** from the account menu, click **Import** and choose a file (text list, movie CSV, TMDB CSV, IMDb CSV, Movary, MyAnimeList, Ryot, TodoMovies, Trakt or a Watcharr export). Review the rows, change any status, then start the import. Imported titles keep their numeric ratings but arrive without a tier; tier each one yourself. The exceptions are the movie CSV and a Watcharr export, which carry tiers of their own.
+
+#### The movie CSV
+
+Use the **Movie CSV** button for a list you keep yourself. Each row is `movie name, imdb link, tier`:
+
+```csv
+Movie Name,IMDb Link,Tier
+Gladiator (2000),https://www.imdb.com/title/tt0172495/,A
+"The Good, the Bad and the Ugly",https://www.imdb.com/title/tt0060196/,S
+Ratatouille (2007),,B
+,https://www.imdb.com/title/tt0088763/,
+```
+
+- **IMDb link** (optional). When given, that exact movie is imported, whatever the name says. Full IMDb links (including `m.imdb.com` and links with extra paths or `?ref_=`) and bare ids like `tt0172495` both work. If TMDB doesn't know the id, the row fails and gets a **Fix** button. It never falls back to guessing by name. A link that isn't an IMDb link is ignored with a warning, and that row is matched by name.
+- **Tier** (optional). `S`, `A`, `B`, `C`, `D` or `F`, in any case. An invalid tier such as `A+` is ignored with a warning, and the row still imports without a tier.
+- **Name.** Used when there is no link. A year in brackets at the end, like `(2007)`, helps pick the right movie. The name can be empty when there is a link. Put names that contain commas in double quotes.
+- A header row is optional and skipped if present. Blank lines are ignored.
+
+The review table shows a **Tier** column, so you can check or change tiers before you start the import. A tier set here is imported as is; numeric ratings are still never turned into tiers.
 
 ### 7. Fix failed imports by URL
 
-When some rows can't be matched, the import page stays open and those rows get a **Fix** button. Click it, paste a link to the title (TMDB, IMDb, Letterboxd or Rotten Tomatoes), check the match, and confirm. The row is imported with its original status, dates, review and rating.
+When some rows can't be matched, the import page stays open and those rows get a **Fix** button. Click it, paste a link to the title (TMDB, IMDb, Letterboxd or Rotten Tomatoes), check the match, and confirm. The row is imported with its original status, dates, review, rating and tier.
 
 ### 8. The public stats page
 
@@ -295,7 +315,7 @@ Watcharr/
 │   │   ├── public/              Public API client for visitors
 │   │   ├── tier/                Tier badge, picker and display rules
 │   │   ├── stats/               Stats page charts
-│   │   ├── import/              Fix by URL dialog
+│   │   ├── import/              Fix by URL dialog, movie CSV parser
 │   │   ├── poster/              Posters and poster lists
 │   │   ├── util/                API client, route guards, helpers
 │   │   └── ...                  Other components
@@ -340,11 +360,15 @@ Every public endpoint and the stats use this one rule.
 
 ### Tiers and numeric ratings
 
-The tier is a separate nullable column (`watched.tier`) holding exactly `S`, `A`, `B`, `C`, `D` or `F`; anything else, including lowercase letters, is rejected. The numeric rating keeps its own column and the admin's chosen rating system. Nothing converts one into the other. Imports store numeric ratings as before and leave the tier empty. Sorting by tier goes S to F, then watched titles with no tier, then Planned titles.
+The tier is a separate nullable column (`watched.tier`) holding exactly `S`, `A`, `B`, `C`, `D` or `F`; anything else, including lowercase letters, is rejected. The numeric rating keeps its own column and the admin's chosen rating system. Nothing converts one into the other. Imports store numeric ratings as before and leave the tier empty, unless the file itself has a tier column (the movie CSV, or a Watcharr export). Sorting by tier goes S to F, then watched titles with no tier, then Planned titles.
 
 ### Resolving pasted urls
 
 TMDB and IMDb links are looked up through the TMDB API. Letterboxd and Rotten Tomatoes pages are fetched to read the TMDB id, or the title and year. Page fetching only reaches `letterboxd.com`, `boxd.it` and `rottentomatoes.com` over HTTPS, re-checks the host on every redirect (at most 3), and stops after 5 seconds or 2 MB. Hosts must match a site exactly or be a subdomain of it, so lookalikes such as `fakeimdb.com` are refused.
+
+### IMDb ids on import
+
+`POST /api/import` accepts an `imdbId`. By default an id TMDB doesn't know falls back to a search by name, which is what the IMDb export import relies on. The movie CSV also sends `imdbStrict: true`, so an unknown id returns `IMPORT_NOTFOUND` instead and the row can be fixed by URL. That way a name never picks a different movie than the link.
 
 ## Code Quality
 
@@ -418,7 +442,7 @@ e2e/*.spec.ts              Playwright journeys: visitor, admin, tiers, import
 
 ## Development Status
 
-The single-owner fork is feature complete: public read-only access, tiers, hidden titles, public stats and fixing imports by URL all work and are covered by tests. It is not affiliated with upstream Watcharr and does not track upstream releases.
+The single-owner fork is feature complete: public read-only access, tiers, hidden titles, public stats, fixing imports by URL and the movie CSV import all work and are covered by tests. It is not affiliated with upstream Watcharr and does not track upstream releases.
 
 ## Troubleshooting
 

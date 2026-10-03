@@ -34,7 +34,8 @@ interface Store {
 					| "myanimelist"
 					| "ryot"
 					| "todomovies"
-					| "imdb";
+					| "imdb"
+					| "movie-csv";
 		  }
 		| undefined;
 	searchQuery: string;

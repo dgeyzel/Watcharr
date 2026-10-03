@@ -155,6 +155,8 @@ export interface Watched {
 	watchingSeason?: string;
 
 	media?: Media;
+	/** Set on the raw watched entry, eg the one `POST /import` returns. */
+	content?: Content;
 }
 
 export interface WatchedAddRequest {
@@ -552,6 +554,8 @@ export interface ResolveResponse {
 export interface ImportedList {
 	tmdbId?: number;
 	imdbId?: string;
+	/** Fail instead of searching by name when imdbId isn't found. */
+	imdbStrict?: boolean;
 
 	name?: string;
 	year?: number;
@@ -566,7 +570,7 @@ export interface ImportedList {
 	watchedEpisodes?: WatchedEpisode[];
 	watchedSeasons?: WatchedSeason[];
 	tags?: TagAddRequest[];
-	/** Only set when restoring a Watcharr export. */
+	/** Set when restoring a Watcharr export or by the movie csv import. */
 	tier?: Tier | null;
 	hidden?: boolean;
 }

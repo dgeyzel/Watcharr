@@ -24,7 +24,9 @@
 		type ImportedList,
 		type Media,
 		type ResolveCandidate,
+		type Tier,
 		type WatchedStatus,
+		TIERS,
 	} from "@/types";
 	import FixImportModal from "@/lib/import/FixImportModal.svelte";
 	import { req } from "@/lib/util/api";
@@ -32,6 +34,7 @@
 	import papa from "papaparse";
 	import Status from "@/lib/Status.svelte";
 	import { resolve } from "$app/paths";
+	import { parseMovieCsv } from "@/lib/import/movieCsv";
 
 	interface ImportedListItemMultiProblem {
 		original: ImportedList;
@@ -46,6 +49,18 @@
 	// Row being fixed by pasting a url.
 	let fixItem: ImportedList | undefined = $state();
 	let importText = $state("");
+	// Only the movie csv import has tiers to review. Kept here since the
+	// store's list is cleared when the import finishes.
+	let showTiers = $state(false);
+	const tierOptions = [
+		{ id: "", value: "None" },
+		...TIERS.map((t) => ({ id: t, value: t })),
+	];
+	// No tier is "" (None), DropDown keeps showing the old value if active
+	// goes back to undefined.
+	const getTier = (l: ImportedList) => l.tier ?? "";
+	const setTier = (l: ImportedList, v: string | number | undefined) =>
+		(l.tier = v ? (v as Tier) : undefined);
 	let cancelled = $state(false);
 	let importTableEl: HTMLTableElement | undefined = $state();
 
@@ -254,6 +269,27 @@
 					text: "Some items with invalid data may have been skipped (check source data for missing ids/titles or look in console for more details).",
 				});
 			}
+		} else if (list?.type === "movie-csv") {
+			importText = "Movie CSV";
+			showTiers = true;
+			const { rows, badLinks, badTiers } = parseMovieCsv(list.data);
+			rList = rows;
+			if (badLinks.length > 0) {
+				console.warn("Movie CSV: links with no IMDb id", badLinks);
+				notify({
+					type: "error",
+					text: `${badLinks.length} link${badLinks.length === 1 ? " wasn't an IMDb link" : "s weren't IMDb links"} and ${badLinks.length === 1 ? "was" : "were"} ignored, those rows will be matched by name.`,
+					time: 10000,
+				});
+			}
+			if (badTiers.length > 0) {
+				console.warn("Movie CSV: invalid tiers", badTiers);
+				notify({
+					type: "error",
+					text: `Ignored invalid tier${badTiers.length === 1 ? "" : "s"}: ${[...new Set(badTiers)].join(", ")}. Tiers must be S, A, B, C, D or F.`,
+					time: 10000,
+				});
+			}
 		} else if (list?.type === "movary") {
 			importText = "Movary";
 			try {
@@ -448,7 +484,8 @@
 	}
 
 	function removeRow(l: ImportedList) {
-		rList = rList.filter((r) => r.name !== l.name);
+		// By identity, rows imported by imdb link alone can share an empty name.
+		rList = rList.filter((r) => r !== l);
 		rList = rList;
 	}
 
@@ -579,7 +616,7 @@
 	}
 
 	async function doImport(item: ImportedList) {
-		if (!item.name?.trim()) {
+		if (!item.name?.trim() && !item.imdbId && !item.tmdbId) {
 			item.state = ImportResponseType.IMPORT_NOTFOUND;
 			rList = rList;
 			return;
@@ -630,6 +667,9 @@
 				item.state = ImportResponseType.IMPORT_SUCCESS;
 				const w = resp.watchedEntry;
 				if (w) {
+					// Rows imported by id alone get their name from the match.
+					if (!item.name?.trim() && w.content?.title)
+						item.name = w.content.title;
 					const release = w.media?.releaseDate;
 					if (release) item.year = new Date(Date.parse(release)).getFullYear();
 					const t = w.media ? getContentTypeFromMedia(w.media) : undefined;
@@ -715,6 +755,9 @@
 								<th>Type</th>
 								<th>Status</th>
 								<th>Rating</th>
+								{#if showTiers}
+									<th>Tier</th>
+								{/if}
 								{#if !isImporting || importDone}
 									<th></th>
 								{/if}
@@ -795,6 +838,18 @@
 											disabled={isImporting}
 										/>
 									</td>
+									{#if showTiers}
+										<td class="tier">
+											<DropDown
+												options={tierOptions}
+												isDropDownItem
+												bind:active={() => getTier(l), (v) => setTier(l, v)}
+												placeholder="Tier"
+												blendIn={true}
+												disabled={isImporting}
+											/>
+										</td>
+									{/if}
 									{#if !isImporting}
 										<td>
 											<button
@@ -841,6 +896,9 @@
 									<td class="type"></td>
 									<td class="status"></td>
 									<td class="rating"></td>
+									{#if showTiers}
+										<td class="tier"></td>
+									{/if}
 									<td></td>
 								</tr>
 							{/if}
@@ -991,6 +1049,10 @@
 
 			&.rating {
 				width: 82px;
+			}
+
+			&.tier {
+				width: 90px;
 			}
 		}
 	}

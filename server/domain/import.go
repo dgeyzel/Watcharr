@@ -46,6 +46,10 @@ type ImportRequest struct {
 	TmdbID int    `json:"tmdbId"`
 	ImdbID string `json:"imdbId"`
 
+	// When set, an ImdbID that can't be found fails the import instead of
+	// falling back to a search by name (which could match the wrong title).
+	ImdbStrict bool `json:"imdbStrict"`
+
 	Name             string                  `json:"name"`
 	Year             int                     `json:"year"`
 	Type             ImportContentType       `json:"type"`
@@ -58,9 +62,8 @@ type ImportRequest struct {
 	WatchedEpisodes  []entity.WatchedEpisode `json:"watchedEpisodes"`
 	WatchedSeason    []entity.WatchedSeason  `json:"watchedSeasons"`
 	Tags             []TagAddRequest         `json:"tags"`
-	// Only set when restoring a Watcharr export (lossless backup). Other
-	// importers never set these, a numeric rating is never turned into a
-	// tier.
+	// Set when restoring a Watcharr export (lossless backup), Tier also by
+	// the movie csv import. A numeric rating is never turned into a tier.
 	Tier   entity.OptionalTier `json:"tier"`
 	Hidden *bool               `json:"hidden"`
 }

@@ -105,6 +105,10 @@ func (s *Service) ImportContent(
 		if err == nil || !errors.Is(err, ErrNoResult) {
 			return resp, err
 		}
+		// The caller wants this exact title, don't guess one by name.
+		if ar.ImdbStrict {
+			return domain.ImportResponse{Type: domain.IMPORT_NOTFOUND}, nil
+		}
 		// If ErrNoResult then we allow going below to search by name.
 	}
 

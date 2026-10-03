@@ -31,7 +31,7 @@
 
 	function processFiles(
 		files: FileList | null | undefined,
-		type: "text-list" | "tmdb" | "imdb",
+		type: "text-list" | "tmdb" | "imdb" | "movie-csv",
 	) {
 		try {
 			console.log("processFiles", files);
@@ -66,13 +66,16 @@
 				return;
 			}
 			if (
-				(type === "tmdb" || type === "imdb") &&
+				(type === "tmdb" || type === "imdb" || type === "movie-csv") &&
 				file.type !== "text/csv" &&
 				ext !== "csv"
 			) {
 				notify({
 					type: "error",
-					text: `${type} export must be a .csv file!`,
+					text:
+						type === "movie-csv"
+							? "Movie CSV must be a .csv file!"
+							: `${type} export must be a .csv file!`,
 				});
 				isLoading = false;
 				return;
@@ -708,6 +711,12 @@
 				<DropFileButton
 					text=".txt list"
 					filesSelected={(f) => processFiles(f, "text-list")}
+				/>
+
+				<!-- Rows of: movie name, imdb link, tier (link and tier optional) -->
+				<DropFileButton
+					text="Movie CSV"
+					filesSelected={(f) => processFiles(f, "movie-csv")}
 				/>
 
 				<DropFileButton

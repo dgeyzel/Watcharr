@@ -81,6 +81,47 @@ test.describe("import", () => {
 		expect(w).toMatchObject({ rating: 8, status: "FINISHED", tier: null });
 	});
 
+	test("movie csv imports by imdb link with a tier", async ({
+		page,
+		adminToken,
+		request,
+	}) => {
+		expect(await watchedIdFor(request, adminToken, THE_THING)).toBeUndefined();
+
+		await asAdmin(page, adminToken, "/import");
+		await page
+			.locator(".drop-file-btn")
+			.filter({ hasText: "Movie CSV" })
+			.locator('input[type="file"]')
+			.setInputFiles({
+				name: "movies.csv",
+				// Windows with Excel installed reports .csv files like this.
+				mimeType: "application/vnd.ms-excel",
+				buffer: Buffer.from(
+					"Movie Name,IMDb Link,Tier\n" +
+						// The name is wrong on purpose, the link decides the title.
+						"Some Other Title,https://www.imdb.com/title/tt0084787/,A\n",
+				),
+			});
+		await page.waitForURL("/import/process");
+		await expect(page.locator("td.name input")).toHaveValue("Some Other Title");
+		await expect(page.locator("td.tier").first()).toContainText("A");
+
+		await page.getByRole("button", { name: "Start Importing" }).click();
+		await page.waitForURL("/", { timeout: 15000 });
+
+		const res = await request.get("/api/watched", {
+			headers: { Authorization: adminToken },
+		});
+		const w = (
+			(await res.json()) as {
+				tier: string | null;
+				content?: { tmdbId: number };
+			}[]
+		).find((x) => x.content?.tmdbId === THE_THING);
+		expect(w).toMatchObject({ tier: "A" });
+	});
+
 	test("file checks: empty, wrong type, and .csv reported as an Excel file", async ({
 		page,
 		adminToken,
